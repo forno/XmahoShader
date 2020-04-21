@@ -8,8 +8,6 @@ License Type: "Unity Companion License"
 [Unity.Mathematics License](https://github.com/Unity-Technologies/Unity.Mathematics/blob/master/LICENSE.md)
 
 ```
-Unity Companion License (“License”) Software Copyright © 2019 Unity Technologies ApS
-
 Unity Companion License (“License”)
 Software Copyright © 2019 Unity Technologies ApS 
  
