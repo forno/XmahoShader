@@ -3,6 +3,11 @@
 
 #include "../raymarching.cginc"
 
+#ifndef RAYMARCHING_FLAG
+float4 raymarching_flag(raymarching_out i);
+#define RAYMARCHING_FLAG raymarching_flag
+#endif
+
 struct v2f
 {
     float4 vertex              : SV_POSITION;
@@ -52,10 +57,7 @@ frag_out frag(v2f i)
     raymarching_out ray_result = raymarch(ray_input);
 
     frag_out o;
-    o.color.rgb = float3(1, 0, 0);
-    // Directional right
-    o.color.rgb *= max(dot(ray_result.normal, _WorldSpaceLightPos0.xyz), 0.0);
-    o.color.a = 1;
+    o.color = raymarching_flag(ray_result);
 
 #if defined(FOG_LINEAR) || defined(FOG_EXP) || defined(FOG_EXP2)
     {

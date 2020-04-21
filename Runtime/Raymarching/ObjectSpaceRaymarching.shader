@@ -69,7 +69,8 @@ Shader "Xmaho/Raymarching/ObjectSpaceRaymarching"
             #include "UnityCG.cginc"
             #include "../Library/math.cginc"
             #include "../Library/primitive.cginc"
-            #include "../Library/ThirdParty/noise.cginc"
+            #include "../Library/noise.cginc"
+            #include "../Library/raymarching.cginc"
             #include "../Library/Template/object_space_raymarching_forward.cginc"
 
             // The MIT License
@@ -116,6 +117,11 @@ Shader "Xmaho/Raymarching/ObjectSpaceRaymarching"
             float distance_function(float3 position)
             {
                 return metaball(to_local(position));
+            }
+
+            float4 raymarching_flag(raymarching_out i)
+            {
+                return float4(1, 0, 0, 1);
             }
             ENDCG
         }
