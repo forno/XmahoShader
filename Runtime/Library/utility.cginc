@@ -56,4 +56,16 @@ float3 to_local(float3 position)
   return mul(unity_WorldToObject, float4(position, 1.0)).xyz;
 }
 
+float3 to_world(float3 position)
+{
+  return mul(unity_ObjectToWorld, float4(position, 1.0)).xyz;
+}
+
+float3 hsv2rgb(float3 c)
+{
+  const float4 K = float4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+  float3 p = abs(frac(c.xxx + K.xyz) * 6.0 - K.www);
+  return c.z * lerp(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
 #endif
