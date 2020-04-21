@@ -115,7 +115,7 @@ Shader "Xmaho/Raymarching/ObjectSpaceRaymarching"
 
             float distance_function(float3 position)
             {
-                return metaball(to_local(position) * object_scale());
+                return metaball(to_local(position));
             }
             ENDCG
         }

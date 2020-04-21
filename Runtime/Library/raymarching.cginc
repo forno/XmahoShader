@@ -55,7 +55,7 @@ struct raymarching_in
 
 bool is_inner_box(float3 position)
 {
-  return all(max(0.5.xxx - abs(to_local(position)), 0.0));
+  return all(max(object_scale() * 0.5 - abs(to_local(position) * object_scale()), 0.0));
 }
 
 float3 raymarch_normal(float3 position)
@@ -75,6 +75,8 @@ raymarching_out raymarch(raymarching_in i)
     float max_length = camera_far_clip();
     float3 near_clip_position = mad(distance_from_near_clip(i.projection_position), ray_direction, camera_position());
     bool is_ray_inner = is_inner_box(near_clip_position);
+    float3 local_ray_direction = normalize(mul(unity_WorldToObject, ray_direction));
+    i.distance_multiplier *= length(mul(unity_ObjectToWorld, local_ray_direction));
 
     raymarching_out o;
     float init_length;
