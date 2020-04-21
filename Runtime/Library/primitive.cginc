@@ -33,15 +33,15 @@ float sphere(float3 position, float radius)
 float round_box(float3 position, float3 size, float round)
 {
     float3 d = abs(position) - size;
-    return length(max(abs(position) - size, 0.0)) - round
-        + min(max(d.x, max(d.y, d.z)), 0.0);
+    return length(max(abs(position) - size, 0.0)) - round +
+      min(max(d.x, max(d.y, d.z)), 0.0);
 }
 
 float box(float3 position, float3 size)
 {
     float3 d = abs(position) - size;
-    return length(max(abs(position) - size, 0.0))
-        + min(max(d.x, max(d.y, d.z)), 0.0);
+    return length(max(abs(position) - size, 0.0)) +
+      min(max(d.x, max(d.y, d.z)), 0.0);
 }
 
 float torus(float3 position, float2 radius)
