@@ -1,0 +1,15 @@
+{
+  "name": "link.xmaho.shader",
+  "version": "0.0.1-preview",
+  "displayName": "x.maho Shader",
+  "description": "x.maho shaders",
+  "unity": "2018.4",
+  "keywords": [
+    "shader"
+  ],
+  "author": {
+    "name": "FORNO",
+    "email": "forno@xmaho.link",
+    "url": "https://github.com/forno"
+  }
+}
