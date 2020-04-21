@@ -39,7 +39,7 @@ float encode_depth(float4 position)
     defined(SHADER_API_OPENGL) || \
     defined(SHADER_API_GLES) || \
     defined(SHADER_API_GLES3)
-  return z * 0.5 + 0.5;
+  return mad(0.5, z, 0.5);
 #else 
   return z;
 #endif 

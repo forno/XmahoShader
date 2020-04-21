@@ -36,29 +36,29 @@ Unity Technologies ApS (“Unity”) grants to you a worldwide, non-exclusive, n
 // Modulo 289 without a division (only multiplications)
 float  mod289(float x)
 {
-  return x - floor(x * (1.0f / 289.0f)) * 289.0f;
+  return mad(-289.0f, floor(x * (1.0f / 289.0f)), x);
 }
 float2 mod289(float2 x)
 {
-  return x - floor(x * (1.0f / 289.0f)) * 289.0f;
+  return mad(-289.0f, floor(x * (1.0f / 289.0f)), x);
 }
 float3 mod289(float3 x)
 {
-  return x - floor(x * (1.0f / 289.0f)) * 289.0f;
+  return mad(-289.0f, floor(x * (1.0f / 289.0f)), x);
 }
 float4 mod289(float4 x)
 {
-  return x - floor(x * (1.0f / 289.0f)) * 289.0f;
+  return mad(-289.0f, floor(x * (1.0f / 289.0f)), x);
 }
 
 // Modulo 7 without a division
 float3 mod7(float3 x)
 {
-  return x - floor(x * (1.0f / 7.0f)) * 7.0f;
+  return mad(-7.0f, floor(x * (1.0f / 7.0f)), x);
 }
 float4 mod7(float4 x)
 {
-  return x - floor(x * (1.0f / 7.0f)) * 7.0f;
+  return mad(-7.0f, floor(x * (1.0f / 7.0f)), x);
 }
 
 // Permutation polynomial: (34x^2 + x) math.mod 289
@@ -99,12 +99,12 @@ float4 fade(float4 t)
 
 float4 grad4(float j, float4 ip)
 {
-  float4 ones = float4(1.0f, 1.0f, 1.0f, -1.0f);
-  float3 pxyz = floor(frac(float3(j,j,j)*ip.xyz) * 7.0f) * ip.z - 1.0f;
+  const float4 ones = float4(1.0f, 1.0f, 1.0f, -1.0f);
+  float3 pxyz = mad(floor(frac(j * ip.xyz) * 7.0f), ip.z, -1.0f);
   float  pw = 1.5f - dot(abs(pxyz), ones.xyz);
   float4 p = float4(pxyz, pw);
-  float4 s = float4(p < 0.0f);
-  p.xyz = mad(s.www, s.xyz * 2.0f - 1.0f, p.xyz);
+  float4 s = p < 0.0f;
+  p.xyz = mad(s.www, mad(2.0f, s.xyz, -1.0f), p.xyz);
   return p;
 }
 
@@ -144,21 +144,21 @@ float2 cellular(float2 P)
   float3 p = permute(px.x + Pi.y + oi); // p11, p12, p13
   float3 oy;
   float3 ox = modf(p * K, oy) - Ko;
-  oy = mod7(oy) * K - Ko;
-  float3 dx = Pf.x + 0.5f + jitter * ox;
-  float3 dy = Pf.y - of + jitter * oy;
+  oy = mad(K, mod7(oy), -Ko);
+  float3 dx = mad(jitter, ox, Pf.x + 0.5f);
+  float3 dy = mad(jitter, oy, Pf.y - of);
   float3 d1 = dx * dx + dy * dy; // d11, d12 and d13, squared
   p = permute(px.y + Pi.y + oi); // p21, p22, p23
-  oy = mod7(modf(p * K, ox)) * K - Ko;
+  oy = mad(K, mod7(modf(p * K, ox)), -Ko);
   ox -= Ko;
-  dx = Pf.x - 0.5f + jitter * ox;
-  dy = Pf.y - of + jitter * oy;
+  dx = mad(jitter, ox, Pf.x - 0.5f);
+  dy = mad(jitter, oy, Pf.y - of);
   float3 d2 = dx * dx + dy * dy; // d21, d22 and d23, squared
   p = permute(px.z + Pi.y + oi); // p31, p32, p33
   ox = modf(p * K, oy) - Ko;
-  oy = mod7(oy) * K - Ko;
-  dx = Pf.x - 1.5f + jitter * ox;
-  dy = Pf.y - of + jitter * oy;
+  oy = mad(K, mod7(oy), -Ko);
+  dx = mad(jitter, ox, Pf.x - 1.5f);
+  dy = mad(jitter, oy, Pf.y - of);
   float3 d3 = dx * dx + dy * dy; // d31, d32 and d33, squared
   // Sort out the two smallest distances (F1, F2)
   float3 d1a = min(d1, d2);
@@ -247,12 +247,12 @@ float2 cellular2x2x2(float3 P)
   float4 p2 = permute(p + Pi.z + float4(1.0f, 1.0f, 1.0f, 1.0f)); // z+1
   float4 oy1;
   float4 ox1 = modf(p1 * K, oy1) - Ko;
-  oy1 = mod7(oy1) * K - Ko;
-  float4 oz1 = floor(p1 * K2) * Kz - Kzo; // p1 < 289 guaranteed
+  oy1 = mad(K, mod7(oy1), -Ko);
+  float4 oz1 = mad(Kz, floor(p1 * K2), -Kzo); // p1 < 289 guaranteed
   float4 oy2;
   float4 ox2 = modf(p2 * K, oy2) - Ko;
-  oy2 = mod7(oy2) * K - Ko;
-  float4 oz2 = floor(p2 * K2) * Kz - Kzo;
+  oy2 = mad(K, mod7(oy2), -Ko);
+  float4 oz2 = mad(Kz, floor(p2 * K2), -Kzo);
   float4 dx1 = mad(jitter, ox1,  Pfx);
   float4 dy1 = mad(jitter, oy1,  Pfy);
   float4 dz1 = mad(jitter, oz1, Pf.z);
@@ -327,48 +327,48 @@ float2 cellular(float3 P)
 
   float3 oy11;
   float3 ox11 = modf(p11 * K, oy11) - Ko;
-  oy11 = mod7(oy11) * K - Ko;
-  float3 oz11 = floor(p11 * K2) * Kz - Kzo; // p11 < 289 guaranteed
+  oy11 = mad(K, mod7(oy11), -Ko);
+  float3 oz11 = mad(Kz, floor(p11 * K2), -Kzo); // p11 < 289 guaranteed
 
   float3 oy12;
   float3 ox12 = modf(p12 * K, oy12) - Ko;
-  oy12 = mod7(oy12) * K - Ko;
-  float3 oz12 = floor(p12 * K2) * Kz - Kzo;
+  oy12 = mad(K, mod7(oy12), -Ko);
+  float3 oz12 = mad(Kz, floor(p12 * K2), -Kzo);
 
   float3 oy13;
   float3 ox13 = modf(p13 * K, oy13) - Ko;
-  oy13 = mod7(oy13) * K - Ko;
-  float3 oz13 = floor(p13 * K2) * Kz - Kzo;
+  oy13 = mad(K, mod7(oy13), -Ko);
+  float3 oz13 = mad(Kz, floor(p13 * K2), -Kzo);
 
   float3 oy21;
   float3 ox21 = modf(p21 * K, oy21) - Ko;
-  oy21 = mod7(oy21) * K - Ko;
-  float3 oz21 = floor(p21 * K2) * Kz - Kzo;
+  oy21 = mad(K, mod7(oy21), -Ko);
+  float3 oz21 = mad(Kz, floor(p21 * K2), -Kzo);
 
   float3 oy22;
   float3 ox22 = modf(p22 * K, oy22) - Ko;
-  oy22 = mod7(oy22) * K - Ko;
-  float3 oz22 = floor(p22 * K2) * Kz - Kzo;
+  oy22 = mad(K, mod7(oy22), -Ko);
+  float3 oz22 = mad(Kz, floor(p22 * K2), -Kzo);
 
   float3 oy23;
   float3 ox23 = modf(p23 * K, oy23) - Ko;
-  oy23 = mod7(oy23) * K - Ko;
-  float3 oz23 = floor(p23 * K2) * Kz - Kzo;
+  oy23 = mad(K, mod7(oy23), -Ko);
+  float3 oz23 = mad(Kz, floor(p23 * K2), -Kzo);
 
   float3 oy31;
   float3 ox31 = modf(p31 * K, oy31) - Ko;
-  oy31 = mod7(oy31) * K - Ko;
-  float3 oz31 = floor(p31 * K2) * Kz - Kzo;
+  oy31 = mad(K, mod7(oy31), -Ko);
+  float3 oz31 = mad(Kz, floor(p31 * K2), -Kzo);
 
   float3 oy32;
   float3 ox32 = modf(p32 * K, oy32) - Ko;
-  oy32 = mod7(oy32) * K - Ko;
-  float3 oz32 = floor(p32 * K2) * Kz - Kzo;
+  oy32 = mad(K, mod7(oy32), -Ko);
+  float3 oz32 = mad(Kz, floor(p32 * K2), -Kzo);
 
   float3 oy33;
   float3 ox33 = modf(p33 * K, oy33) - Ko;
-  oy33 = mod7(oy33) * K - Ko;
-  float3 oz33 = floor(p33 * K2) * Kz - Kzo;
+  oy33 = mad(K, mod7(oy33), -Ko);
+  float3 oz33 = mad(Kz, floor(p33 * K2), -Kzo);
 
   float3 dx11 = mad(jitter, ox11, Pfx);
   float3 dy11 = mad(jitter, oy11, Pfy.x);
@@ -988,10 +988,10 @@ float pnoise(float4 P, float4 rep)
  */
 float snoise(float2 v)
 {
-  float4 C = float4(0.211324865405187f,  // (3.0-math.sqrt(3.0))/6.0
-                    0.366025403784439f,  // 0.5*(math.sqrt(3.0)-1.0)
-                    -0.577350269189626f,  // -1.0 + 2.0 * C.x
-                    0.024390243902439f); // 1.0 / 41.0
+  const float4 C = float4(0.211324865405187f,  // (3.0-math.sqrt(3.0))/6.0
+                          0.366025403784439f,  // 0.5*(math.sqrt(3.0)-1.0)
+                          -0.577350269189626f,  // -1.0 + 2.0 * C.x
+                          0.024390243902439f); // 1.0 / 41.0
   // First corner
   float2 i = floor(v + dot(v, C.yy));
   float2 x0 = v - i + dot(i, C.xx);
@@ -1011,7 +1011,7 @@ float snoise(float2 v)
   i = mod289(i); // Avoid truncation effects in permutation
   float3 p = permute(permute(i.y + float3(0.0f, i1.y, 1.0f)) + i.x + float3(0.0f, i1.x, 1.0f));
 
-  float3 m = max(0.5f - float3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), 0.0f);
+  precise float3 m = saturate(0.5f - float3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw))); // value < 1 than max(value, 0.0f)
   m = m * m;
   m = m * m;
 
@@ -1049,8 +1049,8 @@ float snoise(float2 v)
 */
 float snoise(float3 v)
 {
-  float2 C = float2(1.0f / 6.0f, 1.0f / 3.0f);
-  float4 D = float4(0.0f, 0.5f, 1.0f, 2.0f);
+  const float2 C = float2(1.0f / 6.0f, 1.0f / 3.0f);
+  const float4 D = float4(0.0f, 0.5f, 1.0f, 2.0f);
 
   // First corner
   float3 i = floor(v + dot(v, C.yyy));
@@ -1079,7 +1079,7 @@ float snoise(float3 v)
 
   // Gradients: 7x7 points over a square, mapped onto an octahedron.
   // The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
-  float n_ = 0.142857142857f; // 1.0/7.0
+  const float n_ = 0.142857142857f; // 1.0/7.0
   float3 ns = mad(n_, D.wyz, -D.xzx);
 
   float4 j = mad(-49.0f, floor(p * ns.z * ns.z), p); //  math.mod(p,7*7)
@@ -1087,8 +1087,8 @@ float snoise(float3 v)
   float4 x_ = floor(j * ns.z);
   float4 y_ = floor(mad(-7.0f, x_, j)); // math.mod(j,N)
 
-  float4 x = mad(x_, ns.x, ns.yyyy);
-  float4 y = mad(y_, ns.x, ns.yyyy);
+  float4 x = mad(ns.x, x_, ns.yyyy);
+  float4 y = mad(ns.x, y_, ns.yyyy);
   float4 h = 1.0f - abs(x) - abs(y);
 
   float4 b0 = float4(x.xy, y.xy);
@@ -1116,7 +1116,7 @@ float snoise(float3 v)
   p3 *= norm.w;
 
   // Mix final noise value
-  float4 m = max(0.6f - float4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0f);
+  precise float4 m = saturate(0.6f - float4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3))); // value < 1 than max(value, 0.0f)
   m = m * m;
   return 42.0f * dot(m * m, float4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
 }
@@ -1164,7 +1164,7 @@ float snoise(float3 v, out float3 gradient)
 
   // Gradients: 7x7 points over a square, mapped onto an octahedron.
   // The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
-  float n_ = 0.142857142857f; // 1.0/7.0
+  const float n_ = 0.142857142857f; // 1.0/7.0
   float3 ns = mad(n_, D.wyz, -D.xzx);
 
   float4 j = mad(-49.0f, floor(p * ns.z * ns.z), p); //  math.mod(p,7*7)
@@ -1172,8 +1172,8 @@ float snoise(float3 v, out float3 gradient)
   float4 x_ = floor(j * ns.z);
   float4 y_ = floor(mad(-7.0f, x_, j)); // math.mod(j,N)
 
-  float4 x = mad(x_, ns.x, ns.yyyy);
-  float4 y = mad(y_, ns.x, ns.yyyy);
+  float4 x = mad(ns.x, x_, ns.yyyy);
+  float4 y = mad(ns.x, y_, ns.yyyy);
   float4 h = 1.0f - abs(x) - abs(y);
 
   float4 b0 = float4(x.xy, y.xy);
@@ -1201,7 +1201,7 @@ float snoise(float3 v, out float3 gradient)
   p3 *= norm.w;
 
   // Mix final noise value
-  float4 m = max(0.6f - float4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0f);
+  precise float4 m = saturate(0.6f - float4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3))); // value < 1 than max(value, 0.0f)
   float4 m2 = m * m;
   float4 m4 = m2 * m2;
   float4 pdotx = float4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3));
@@ -1255,9 +1255,9 @@ float snoise(float4 v)
   i0.w += 1.0f - isYZ.z;
 
   // i0 now contains the unique values 0,1,2,3 in each channel
-  float4 i3 = clamp(i0, 0.0f, 1.0f);
-  float4 i2 = clamp(i0 - 1.0f, 0.0f, 1.0f);
-  float4 i1 = clamp(i0 - 2.0f, 0.0f, 1.0f);
+  float4 i3 = saturate(i0);
+  float4 i2 = saturate(i0 - 1.0f);
+  float4 i1 = saturate(i0 - 2.0f);
 
   //  x0 = x0 - 0.0 + 0.0 * C.xxxx
   //  x1 = x0 - i1  + 1.0 * C.xxxx
@@ -1297,8 +1297,8 @@ float snoise(float4 v)
   p4 *= taylorInvSqrt(dot(p4, p4));
 
   // Mix contributions from the five corners
-  float3 m0 = max(0.6f - float3(dot(x0, x0), dot(x1, x1), dot(x2, x2)), 0.0f);
-  float2 m1 = max(0.6f - float2(dot(x3, x3), dot(x4, x4)), 0.0f);
+  precise float3 m0 = saturate(0.6f - float3(dot(x0, x0), dot(x1, x1), dot(x2, x2))); // value < 1 than max(value, 0.0f)
+  precise float2 m1 = saturate(0.6f - float2(dot(x3, x3), dot(x4, x4))); // value < 1 than max(value, 0.0f)
   m0 = m0 * m0;
   m1 = m1 * m1;
   return 49.0f * (dot(m0 * m0, float3(dot(p0, x0), dot(p1, x1), dot(p2, x2))) +
@@ -1519,7 +1519,7 @@ float psrnoise(float2 pos, float2 per, float rot)
   float3 t = 0.8f - float3(dot(d0, d0), dot(d1, d1), dot(d2, d2));
 
   // Set influence of each surflet to zero outside radius math.sqrt(0.8)
-  t = max(t, 0.0f);
+  t = saturate(t); // t < 1 then max(t, 0.0f)
 
   // Fourth power of t
   float3 t2 = t * t;
@@ -1697,7 +1697,7 @@ float srnoise(float2 pos, float rot)
   float3 t = 0.8f - float3(dot(d0, d0), dot(d1, d1), dot(d2, d2));
 
   // Set influence of each surflet to zero outside radius math.sqrt(0.8)
-  t = max(t, 0.0f);
+  t = saturate(t); // t < 1 than max(t, 0.0f)
 
   // Fourth power of t
   float3 t2 = t * t;

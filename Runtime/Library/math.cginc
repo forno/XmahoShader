@@ -41,17 +41,17 @@ float3 mod(float3 x, float3 y)
 
 float repeat(float pos, float span)
 {
-  return mod(pos, span) - span * 0.5;
+  return mad(-0.5, span, mod(pos, span));
 }
 
 float2 repeat(float2 pos, float2 span)
 {
-  return mod(pos, span) - span * 0.5;
+  return mad(-0.5, span, mod(pos, span));
 }
 
 float3 repeat(float3 pos, float3 span)
 {
-  return mod(pos, span) - span * 0.5;
+  return mad(-0.5, span, mod(pos, span));
 }
 
 float smooth_min(float d1, float d2, float k)

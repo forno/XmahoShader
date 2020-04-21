@@ -55,7 +55,7 @@ struct raymarching_in
 
 bool is_inner_box(float3 position)
 {
-  return all(max(object_scale() * 0.5 - abs(to_local(position) * object_scale()), 0.0));
+  return all(max(mad(0.5, object_scale(), -abs(to_local(position) * object_scale())), 0.0));
 }
 
 float3 raymarch_normal(float3 position)
