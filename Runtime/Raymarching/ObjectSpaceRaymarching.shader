@@ -33,7 +33,7 @@ Shader "Xmaho/Raymarching/ObjectSpaceRaymarching"
         _DistanceMultiplier ("Distance Multiplier", Range(0.001, 2.0)) = 1.0
 
         [Header(Pass)]
-        [Enum(UnityEngine.Rendering.CullMode)] _Cull("Culling", Int) = 2
+        [Enum(UnityEngine.Rendering.CullMode)] _Cull("Culling", Int) = 0
         [Toggle][KeyEnum(Off, On)] _ZWrite("ZWrite", Int) = 1
         [Enum(UnityEngine.Rendering.CompareFunction)] _ZTest("ZTest", Int) = 4
     }
