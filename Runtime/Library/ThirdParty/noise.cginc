@@ -64,37 +64,37 @@ float4 mod7(float4 x)
 // Permutation polynomial: (34x^2 + x) math.mod 289
 float  permute(float x)
 {
-  return mod289((34.0f * x + 1.0f) * x);
+  return mod289(mad(34.0f, x, 1.0f) * x);
 }
 float3 permute(float3 x)
 {
-  return mod289((34.0f * x + 1.0f) * x);
+  return mod289(mad(34.0f, x, 1.0f) * x);
 }
 float4 permute(float4 x)
 {
-  return mod289((34.0f * x + 1.0f) * x);
+  return mod289(mad(34.0f, x, 1.0f) * x);
 }
 
 float  taylorInvSqrt(float r)
 {
-  return 1.79284291400159f - 0.85373472095314f * r;
+  return mad(-0.85373472095314f, r, 1.79284291400159f);
 }
 float4 taylorInvSqrt(float4 r)
 {
-  return 1.79284291400159f - 0.85373472095314f * r;
+  return mad(-0.85373472095314f, r, 1.79284291400159f);
 }
 
 float2 fade(float2 t)
 {
-  return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f);
+  return t * t * t * mad(t, mad(6.0f, t, -15.0f), 10.0f);
 }
 float3 fade(float3 t)
 {
-  return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f);
+  return t * t * t * mad(t, mad(6.0f, t, -15.0f), 10.0f);
 }
 float4 fade(float4 t)
 {
-  return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f);
+  return t * t * t * mad(t, mad(6.0f, t, -15.0f), 10.0f);
 }
 
 float4 grad4(float j, float4 ip)
@@ -104,16 +104,18 @@ float4 grad4(float j, float4 ip)
   float  pw = 1.5f - dot(abs(pxyz), ones.xyz);
   float4 p = float4(pxyz, pw);
   float4 s = float4(p < 0.0f);
-  p.xyz = p.xyz + (s.xyz * 2.0f - 1.0f) * s.www;
+  p.xyz = mad(s.www, s.xyz * 2.0f - 1.0f, p.xyz);
   return p;
 }
 
-// Hashed 2-D gradients with an extra rotation.
-// (The constant 0.0243902439 is 1/41)
+/**
+ * Hashed 2-D gradients with an extra rotation.
+ * (The constant 0.0243902439 is 1/41)
+ */
 float2 rgrad2(float2 p, float rot)
 {
   // For more isotropic gradients, math.sin/math.cos can be used instead.
-  float u = permute(permute(p.x) + p.y) * 0.0243902439f + rot; // Rotate by shift
+  float u = mad(0.0243902439f, permute(permute(p.x) + p.y), rot); // Rotate by shift
   u = frac(u) * 6.28318530718f; // 2*pi
   return float2(cos(u), sin(u));
 }
@@ -136,25 +138,25 @@ float2 cellular(float2 P)
   float2 Pi;
   float2 Pf = modf(P, Pi);
   Pi = mod289(Pi);
-  float3 oi = float3(-1.0f, 0.0f, 1.0f);
-  float3 of = float3(-0.5f, 0.5f, 1.5f);
+  const float3 oi = float3(-1.0f, 0.0f, 1.0f);
+  const float3 of = float3(-0.5f, 0.5f, 1.5f);
   float3 px = permute(Pi.x + oi);
   float3 p = permute(px.x + Pi.y + oi); // p11, p12, p13
-  float3 ox = frac(p * K) - Ko;
-  float3 oy = mod7(floor(p * K)) * K - Ko;
+  float3 oy;
+  float3 ox = modf(p * K, oy) - Ko;
+  oy = mod7(oy) * K - Ko;
   float3 dx = Pf.x + 0.5f + jitter * ox;
   float3 dy = Pf.y - of + jitter * oy;
   float3 d1 = dx * dx + dy * dy; // d11, d12 and d13, squared
   p = permute(px.y + Pi.y + oi); // p21, p22, p23
-  oy = modf(p * K, ox);
+  oy = mod7(modf(p * K, ox)) * K - Ko;
   ox -= Ko;
-  oy = mod7(oy) * K - Ko;
   dx = Pf.x - 0.5f + jitter * ox;
   dy = Pf.y - of + jitter * oy;
   float3 d2 = dx * dx + dy * dy; // d21, d22 and d23, squared
   p = permute(px.z + Pi.y + oi); // p31, p32, p33
-  ox = frac(p * K) - Ko;
-  oy = mod7(floor(p * K)) * K - Ko;
+  ox = modf(p * K, oy) - Ko;
+  oy = mod7(oy) * K - Ko;
   dx = Pf.x - 1.5f + jitter * ox;
   dy = Pf.y - of + jitter * oy;
   float3 d3 = dx * dx + dy * dy; // d31, d32 and d33, squared
@@ -198,10 +200,10 @@ float2 cellular2x2(float2 P)
   float4 Pfy = Pf.y + float4(-0.5f, -0.5f, -1.5f, -1.5f);
   float4 p = permute(Pi.x + float4(0.0f, 1.0f, 0.0f, 1.0f));
   p = permute(p + Pi.y + float4(0.0f, 0.0f, 1.0f, 1.0f));
-  float4 ox = mod7(p) * K + K2;
-  float4 oy = mod7(floor(p * K)) * K + K2;
-  float4 dx = Pfx + jitter * ox;
-  float4 dy = Pfy + jitter * oy;
+  float4 ox = mad(K, mod7(p), K2);
+  float4 oy = mad(K, mod7(floor(p * K)), K2);
+  float4 dx = mad(jitter, ox, Pfx);
+  float4 dy = mad(jitter, oy, Pfy);
   float4 d = dx * dx + dy * dy; // d11, d12, d21 and d22, squared
   // Sort out the two smallest distances
   // Do it right and find both F1 and F2
@@ -243,18 +245,20 @@ float2 cellular2x2x2(float3 P)
   p = permute(p + Pi.y + float4(0.0f, 0.0f, 1.0f, 1.0f));
   float4 p1 = permute(p + Pi.z); // z+0
   float4 p2 = permute(p + Pi.z + float4(1.0f, 1.0f, 1.0f, 1.0f)); // z+1
-  float4 ox1 = frac(p1 * K) - Ko;
-  float4 oy1 = mod7(floor(p1 * K)) * K - Ko;
+  float4 oy1;
+  float4 ox1 = modf(p1 * K, oy1) - Ko;
+  oy1 = mod7(oy1) * K - Ko;
   float4 oz1 = floor(p1 * K2) * Kz - Kzo; // p1 < 289 guaranteed
-  float4 ox2 = frac(p2 * K) - Ko;
-  float4 oy2 = mod7(floor(p2 * K)) * K - Ko;
+  float4 oy2;
+  float4 ox2 = modf(p2 * K, oy2) - Ko;
+  oy2 = mod7(oy2) * K - Ko;
   float4 oz2 = floor(p2 * K2) * Kz - Kzo;
-  float4 dx1 = Pfx + jitter * ox1;
-  float4 dy1 = Pfy + jitter * oy1;
-  float4 dz1 = Pf.z + jitter * oz1;
-  float4 dx2 = Pfx + jitter * ox2;
-  float4 dy2 = Pfy + jitter * oy2;
-  float4 dz2 = Pf.z - 1.0f + jitter * oz2;
+  float4 dx1 = mad(jitter, ox1,  Pfx);
+  float4 dy1 = mad(jitter, oy1,  Pfy);
+  float4 dz1 = mad(jitter, oz1, Pf.z);
+  float4 dx2 = mad(jitter, ox2,  Pfx);
+  float4 dy2 = mad(jitter, oy2,  Pfy);
+  float4 dz2 = mad(jitter, oz2, Pf.z - 1.0f);
   float4 d1 = dx1 * dx1 + dy1 * dy1 + dz1 * dz1; // z+0
   float4 d2 = dx2 * dx2 + dy2 * dy2 + dz2 * dz2; // z+1
 
@@ -297,9 +301,8 @@ float2 cellular(float3 P)
   const float jitter = 1.0f; // smaller jitter gives more regular pattern
 
   float3 Pi;
-  float3 Pf = modf(P, Pi);
+  float3 Pf = modf(P, Pi) - 0.5f;
   Pi = mod289(Pi);
-  Pf -= 0.5f;
 
   float3 Pfx = Pf.x + float3(1.0f, 0.0f, -1.0f);
   float3 Pfy = Pf.y + float3(1.0f, 0.0f, -1.0f);
@@ -322,77 +325,86 @@ float2 cellular(float3 P)
   float3 p32 = permute(p3 + Pi.z);
   float3 p33 = permute(p3 + Pi.z + 1.0f);
 
-  float3 ox11 = frac(p11 * K) - Ko;
-  float3 oy11 = mod7(floor(p11 * K)) * K - Ko;
+  float3 oy11;
+  float3 ox11 = modf(p11 * K, oy11) - Ko;
+  oy11 = mod7(oy11) * K - Ko;
   float3 oz11 = floor(p11 * K2) * Kz - Kzo; // p11 < 289 guaranteed
 
-  float3 ox12 = frac(p12 * K) - Ko;
-  float3 oy12 = mod7(floor(p12 * K)) * K - Ko;
+  float3 oy12;
+  float3 ox12 = modf(p12 * K, oy12) - Ko;
+  oy12 = mod7(oy12) * K - Ko;
   float3 oz12 = floor(p12 * K2) * Kz - Kzo;
 
-  float3 ox13 = frac(p13 * K) - Ko;
-  float3 oy13 = mod7(floor(p13 * K)) * K - Ko;
+  float3 oy13;
+  float3 ox13 = modf(p13 * K, oy13) - Ko;
+  oy13 = mod7(oy13) * K - Ko;
   float3 oz13 = floor(p13 * K2) * Kz - Kzo;
 
-  float3 ox21 = frac(p21 * K) - Ko;
-  float3 oy21 = mod7(floor(p21 * K)) * K - Ko;
+  float3 oy21;
+  float3 ox21 = modf(p21 * K, oy21) - Ko;
+  oy21 = mod7(oy21) * K - Ko;
   float3 oz21 = floor(p21 * K2) * Kz - Kzo;
 
-  float3 ox22 = frac(p22 * K) - Ko;
-  float3 oy22 = mod7(floor(p22 * K)) * K - Ko;
+  float3 oy22;
+  float3 ox22 = modf(p22 * K, oy22) - Ko;
+  oy22 = mod7(oy22) * K - Ko;
   float3 oz22 = floor(p22 * K2) * Kz - Kzo;
 
-  float3 ox23 = frac(p23 * K) - Ko;
-  float3 oy23 = mod7(floor(p23 * K)) * K - Ko;
+  float3 oy23;
+  float3 ox23 = modf(p23 * K, oy23) - Ko;
+  oy23 = mod7(oy23) * K - Ko;
   float3 oz23 = floor(p23 * K2) * Kz - Kzo;
 
-  float3 ox31 = frac(p31 * K) - Ko;
-  float3 oy31 = mod7(floor(p31 * K)) * K - Ko;
+  float3 oy31;
+  float3 ox31 = modf(p31 * K, oy31) - Ko;
+  oy31 = mod7(oy31) * K - Ko;
   float3 oz31 = floor(p31 * K2) * Kz - Kzo;
 
-  float3 ox32 = frac(p32 * K) - Ko;
-  float3 oy32 = mod7(floor(p32 * K)) * K - Ko;
+  float3 oy32;
+  float3 ox32 = modf(p32 * K, oy32) - Ko;
+  oy32 = mod7(oy32) * K - Ko;
   float3 oz32 = floor(p32 * K2) * Kz - Kzo;
 
-  float3 ox33 = frac(p33 * K) - Ko;
-  float3 oy33 = mod7(floor(p33 * K)) * K - Ko;
+  float3 oy33;
+  float3 ox33 = modf(p33 * K, oy33) - Ko;
+  oy33 = mod7(oy33) * K - Ko;
   float3 oz33 = floor(p33 * K2) * Kz - Kzo;
 
-  float3 dx11 = Pfx + jitter * ox11;
-  float3 dy11 = Pfy.x + jitter * oy11;
-  float3 dz11 = Pfz.x + jitter * oz11;
+  float3 dx11 = mad(jitter, ox11, Pfx);
+  float3 dy11 = mad(jitter, oy11, Pfy.x);
+  float3 dz11 = mad(jitter, oz11, Pfz.x);
 
-  float3 dx12 = Pfx + jitter * ox12;
-  float3 dy12 = Pfy.x + jitter * oy12;
-  float3 dz12 = Pfz.y + jitter * oz12;
+  float3 dx12 = mad(jitter, ox12, Pfx);
+  float3 dy12 = mad(jitter, oy12, Pfy.x);
+  float3 dz12 = mad(jitter, oz12, Pfz.y);
 
-  float3 dx13 = Pfx + jitter * ox13;
-  float3 dy13 = Pfy.x + jitter * oy13;
-  float3 dz13 = Pfz.z + jitter * oz13;
+  float3 dx13 = mad(jitter, ox13, Pfx);
+  float3 dy13 = mad(jitter, oy13, Pfy.x);
+  float3 dz13 = mad(jitter, oz13, Pfz.z);
 
-  float3 dx21 = Pfx + jitter * ox21;
-  float3 dy21 = Pfy.y + jitter * oy21;
-  float3 dz21 = Pfz.x + jitter * oz21;
+  float3 dx21 = mad(jitter, ox21, Pfx);
+  float3 dy21 = mad(jitter, oy21, Pfy.y);
+  float3 dz21 = mad(jitter, oz21, Pfz.x);
 
-  float3 dx22 = Pfx + jitter * ox22;
-  float3 dy22 = Pfy.y + jitter * oy22;
-  float3 dz22 = Pfz.y + jitter * oz22;
+  float3 dx22 = mad(jitter, ox22, Pfx);
+  float3 dy22 = mad(jitter, oy22, Pfy.y);
+  float3 dz22 = mad(jitter, oz22, Pfz.y);
 
-  float3 dx23 = Pfx + jitter * ox23;
-  float3 dy23 = Pfy.y + jitter * oy23;
-  float3 dz23 = Pfz.z + jitter * oz23;
+  float3 dx23 = mad(jitter, ox23, Pfx);
+  float3 dy23 = mad(jitter, oy23, Pfy.y);
+  float3 dz23 = mad(jitter, oz23, Pfz.z);
 
-  float3 dx31 = Pfx + jitter * ox31;
-  float3 dy31 = Pfy.z + jitter * oy31;
-  float3 dz31 = Pfz.x + jitter * oz31;
+  float3 dx31 = mad(jitter, ox31, Pfx);
+  float3 dy31 = mad(jitter, oy31, Pfy.z);
+  float3 dz31 = mad(jitter, oz31, Pfz.x);
 
-  float3 dx32 = Pfx + jitter * ox32;
-  float3 dy32 = Pfy.z + jitter * oy32;
-  float3 dz32 = Pfz.y + jitter * oz32;
+  float3 dx32 = mad(jitter, ox32, Pfx);
+  float3 dy32 = mad(jitter, oy32, Pfy.z);
+  float3 dz32 = mad(jitter, oz32, Pfz.y);
 
-  float3 dx33 = Pfx + jitter * ox33;
-  float3 dy33 = Pfy.z + jitter * oy33;
-  float3 dz33 = Pfz.z + jitter * oz33;
+  float3 dx33 = mad(jitter, ox33, Pfx);
+  float3 dy33 = mad(jitter, oy33, Pfy.z);
+  float3 dz33 = mad(jitter, oz33, Pfz.z);
 
   float3 d11 = dx11 * dx11 + dy11 * dy11 + dz11 * dz11;
   float3 d12 = dx12 * dx12 + dy12 * dy12 + dz12 * dz12;
@@ -452,9 +464,8 @@ float2 cellular(float3 P)
 float cnoise(float2 P)
 {
   float4 Pi;
-  float4 Pf = modf(P.xyxy, Pi);
+  float4 Pf = modf(P.xyxy, Pi) - float4(0.0f, 0.0f, 1.0f, 1.0f);
   Pi += float4(0.0f, 0.0f, 1.0f, 1.0f);
-  Pf -= float4(0.0f, 0.0f, 1.0f, 1.0f);
   Pi = mod289(Pi); // To avoid truncation effects in permutation
   float4 ix = Pi.xzxz;
   float4 iy = Pi.yyww;
@@ -463,7 +474,7 @@ float cnoise(float2 P)
 
   float4 i = permute(permute(ix) + iy);
 
-  float4 gx = frac(i * (1.0f / 41.0f)) * 2.0f - 1.0f;
+  float4 gx = mad(2.0f, frac(i * (1.0f / 41.0f)), -1.0f);
   float4 gy = abs(gx) - 0.5f;
   float4 tx = floor(gx + 0.5f);
   gx = gx - tx;
@@ -494,9 +505,8 @@ float cnoise(float2 P)
 float pnoise(float2 P, float2 rep)
 {
   float4 Pi;
-  float4 Pf = modf(P.xyxy, Pi);
+  float4 Pf = modf(P.xyxy, Pi) - float4(0.0f, 0.0f, 1.0f, 1.0f);
   Pi += float4(0.0f, 0.0f, 1.0f, 1.0f);
-  Pf -= float4(0.0f, 0.0f, 1.0f, 1.0f);
   Pi = fmod(Pi, rep.xyxy); // To create noise with explicit period
   Pi = mod289(Pi); // To avoid truncation effects in permutation
   float4 ix = Pi.xzxz;
@@ -506,7 +516,7 @@ float pnoise(float2 P, float2 rep)
 
   float4 i = permute(permute(ix) + iy);
 
-  float4 gx = frac(i * (1.0f / 41.0f)) * 2.0f - 1.0f;
+  float4 gx = mad(2.0f, frac(i * (1.0f / 41.0f)), -1.0f);
   float4 gy = abs(gx) - 0.5f;
   float4 tx = floor(gx + 0.5f);
   gx = gx - tx;
@@ -684,15 +694,444 @@ float pnoise(float3 P, float3 rep)
   return 2.2f * n_xyz;
 }
 
-// Description : Array and textureless GLSL 2D/3D/4D simplex
-//               noise functions.
-//      Author : Ian McEwan, Ashima Arts.
-//  Maintainer : stegu
-//     Lastmath.mod : 20110822 (ijm)
-//     License : Copyright (C) 2011 Ashima Arts. All rights reserved.
-//               Distributed under the MIT License. See LICENSE file.
-//               https://github.com/ashima/webgl-noise
-//               https://github.com/stegu/webgl-noise
+// GLSL textureless classic 4D noise "cnoise",
+// with an RSL-style periodic variant "pnoise".
+// Author:  Stefan Gustavson (stefan.gustavson@liu.se)
+// Version: 2011-08-22
+//
+// Many thanks to Ian McEwan of Ashima Arts for the
+// ideas for permutation and gradient selection.
+//
+// Copyright (c) 2011 Stefan Gustavson. All rights reserved.
+// Distributed under the MIT license. See LICENSE file.
+// https://github.com/stegu/webgl-noise
+//! Classic Perlin noise
+float cnoise(float4 P)
+{
+  float4 Pi0; // Integer part for indexing
+  float4 Pf0 = modf(P, Pi0); // Fractional part for interpolation
+  float4 Pi1 = Pi0 + 1.0f; // Integer part + 1
+  Pi0 = mod289(Pi0);
+  Pi1 = mod289(Pi1);
+  float4 Pf1 = Pf0 - 1.0f; // Fractional part - 1.0
+  float4 ix = float4(Pi0.x, Pi1.x, Pi0.x, Pi1.x);
+  float4 iy = float4(Pi0.yy, Pi1.yy);
+  float4 iz0 = float4(Pi0.zzzz);
+  float4 iz1 = float4(Pi1.zzzz);
+  float4 iw0 = float4(Pi0.wwww);
+  float4 iw1 = float4(Pi1.wwww);
+
+  float4 ixy = permute(permute(ix) + iy);
+  float4 ixy0 = permute(ixy + iz0);
+  float4 ixy1 = permute(ixy + iz1);
+  float4 ixy00 = permute(ixy0 + iw0);
+  float4 ixy01 = permute(ixy0 + iw1);
+  float4 ixy10 = permute(ixy1 + iw0);
+  float4 ixy11 = permute(ixy1 + iw1);
+
+  float4 gx00 = ixy00 * (1.0f / 7.0f);
+  float4 gy00 = floor(gx00) * (1.0f / 7.0f);
+  float4 gz00 = floor(gy00) * (1.0f / 6.0f);
+  gx00 = frac(gx00) - 0.5f;
+  gy00 = frac(gy00) - 0.5f;
+  gz00 = frac(gz00) - 0.5f;
+  float4 gw00 = float4(0.75f, 0.75f, 0.75f, 0.75f) - abs(gx00) - abs(gy00) - abs(gz00);
+  float4 sw00 = step(gw00, float4(0.0f, 0.0f, 0.0f, 0.0f));
+  gx00 -= sw00 * (step(0.0f, gx00) - 0.5f);
+  gy00 -= sw00 * (step(0.0f, gy00) - 0.5f);
+
+  float4 gx01 = ixy01 * (1.0f / 7.0f);
+  float4 gy01 = floor(gx01) * (1.0f / 7.0f);
+  float4 gz01 = floor(gy01) * (1.0f / 6.0f);
+  gx01 = frac(gx01) - 0.5f;
+  gy01 = frac(gy01) - 0.5f;
+  gz01 = frac(gz01) - 0.5f;
+  float4 gw01 = float4(0.75f, 0.75f, 0.75f, 0.75f) - abs(gx01) - abs(gy01) - abs(gz01);
+  float4 sw01 = step(gw01, float4(0.0f, 0.0f, 0.0f, 0.0f));
+  gx01 -= sw01 * (step(0.0f, gx01) - 0.5f);
+  gy01 -= sw01 * (step(0.0f, gy01) - 0.5f);
+
+  float4 gx10 = ixy10 * (1.0f / 7.0f);
+  float4 gy10 = floor(gx10) * (1.0f / 7.0f);
+  float4 gz10 = floor(gy10) * (1.0f / 6.0f);
+  gx10 = frac(gx10) - 0.5f;
+  gy10 = frac(gy10) - 0.5f;
+  gz10 = frac(gz10) - 0.5f;
+  float4 gw10 = float4(0.75f, 0.75f, 0.75f, 0.75f) - abs(gx10) - abs(gy10) - abs(gz10);
+  float4 sw10 = step(gw10, float4(0.0f, 0.0f, 0.0f, 0.0f));
+  gx10 -= sw10 * (step(0.0f, gx10) - 0.5f);
+  gy10 -= sw10 * (step(0.0f, gy10) - 0.5f);
+
+  float4 gx11 = ixy11 * (1.0f / 7.0f);
+  float4 gy11 = floor(gx11) * (1.0f / 7.0f);
+  float4 gz11 = floor(gy11) * (1.0f / 6.0f);
+  gx11 = frac(gx11) - 0.5f;
+  gy11 = frac(gy11) - 0.5f;
+  gz11 = frac(gz11) - 0.5f;
+  float4 gw11 = float4(0.75f, 0.75f, 0.75f, 0.75f) - abs(gx11) - abs(gy11) - abs(gz11);
+  float4 sw11 = step(gw11, float4(0.0f, 0.0f, 0.0f, 0.0f));
+  gx11 -= sw11 * (step(0.0f, gx11) - 0.5f);
+  gy11 -= sw11 * (step(0.0f, gy11) - 0.5f);
+
+  float4 g0000 = float4(gx00.x, gy00.x, gz00.x, gw00.x);
+  float4 g1000 = float4(gx00.y, gy00.y, gz00.y, gw00.y);
+  float4 g0100 = float4(gx00.z, gy00.z, gz00.z, gw00.z);
+  float4 g1100 = float4(gx00.w, gy00.w, gz00.w, gw00.w);
+  float4 g0010 = float4(gx10.x, gy10.x, gz10.x, gw10.x);
+  float4 g1010 = float4(gx10.y, gy10.y, gz10.y, gw10.y);
+  float4 g0110 = float4(gx10.z, gy10.z, gz10.z, gw10.z);
+  float4 g1110 = float4(gx10.w, gy10.w, gz10.w, gw10.w);
+  float4 g0001 = float4(gx01.x, gy01.x, gz01.x, gw01.x);
+  float4 g1001 = float4(gx01.y, gy01.y, gz01.y, gw01.y);
+  float4 g0101 = float4(gx01.z, gy01.z, gz01.z, gw01.z);
+  float4 g1101 = float4(gx01.w, gy01.w, gz01.w, gw01.w);
+  float4 g0011 = float4(gx11.x, gy11.x, gz11.x, gw11.x);
+  float4 g1011 = float4(gx11.y, gy11.y, gz11.y, gw11.y);
+  float4 g0111 = float4(gx11.z, gy11.z, gz11.z, gw11.z);
+  float4 g1111 = float4(gx11.w, gy11.w, gz11.w, gw11.w);
+
+  float4 norm00 = taylorInvSqrt(float4(dot(g0000, g0000), dot(g0100, g0100), dot(g1000, g1000), dot(g1100, g1100)));
+  g0000 *= norm00.x;
+  g0100 *= norm00.y;
+  g1000 *= norm00.z;
+  g1100 *= norm00.w;
+
+  float4 norm01 = taylorInvSqrt(float4(dot(g0001, g0001), dot(g0101, g0101), dot(g1001, g1001), dot(g1101, g1101)));
+  g0001 *= norm01.x;
+  g0101 *= norm01.y;
+  g1001 *= norm01.z;
+  g1101 *= norm01.w;
+
+  float4 norm10 = taylorInvSqrt(float4(dot(g0010, g0010), dot(g0110, g0110), dot(g1010, g1010), dot(g1110, g1110)));
+  g0010 *= norm10.x;
+  g0110 *= norm10.y;
+  g1010 *= norm10.z;
+  g1110 *= norm10.w;
+
+  float4 norm11 = taylorInvSqrt(float4(dot(g0011, g0011), dot(g0111, g0111), dot(g1011, g1011), dot(g1111, g1111)));
+  g0011 *= norm11.x;
+  g0111 *= norm11.y;
+  g1011 *= norm11.z;
+  g1111 *= norm11.w;
+
+  float n0000 = dot(g0000, Pf0);
+  float n1000 = dot(g1000, float4(Pf1.x, Pf0.yzw));
+  float n0100 = dot(g0100, float4(Pf0.x, Pf1.y, Pf0.zw));
+  float n1100 = dot(g1100, float4(Pf1.xy, Pf0.zw));
+  float n0010 = dot(g0010, float4(Pf0.xy, Pf1.z, Pf0.w));
+  float n1010 = dot(g1010, float4(Pf1.x, Pf0.y, Pf1.z, Pf0.w));
+  float n0110 = dot(g0110, float4(Pf0.x, Pf1.yz, Pf0.w));
+  float n1110 = dot(g1110, float4(Pf1.xyz, Pf0.w));
+  float n0001 = dot(g0001, float4(Pf0.xyz, Pf1.w));
+  float n1001 = dot(g1001, float4(Pf1.x, Pf0.yz, Pf1.w));
+  float n0101 = dot(g0101, float4(Pf0.x, Pf1.y, Pf0.z, Pf1.w));
+  float n1101 = dot(g1101, float4(Pf1.xy, Pf0.z, Pf1.w));
+  float n0011 = dot(g0011, float4(Pf0.xy, Pf1.zw));
+  float n1011 = dot(g1011, float4(Pf1.x, Pf0.y, Pf1.zw));
+  float n0111 = dot(g0111, float4(Pf0.x, Pf1.yzw));
+  float n1111 = dot(g1111, Pf1);
+
+  float4 fade_xyzw = fade(Pf0);
+  float4 n_0w = lerp(float4(n0000, n1000, n0100, n1100), float4(n0001, n1001, n0101, n1101), fade_xyzw.w);
+  float4 n_1w = lerp(float4(n0010, n1010, n0110, n1110), float4(n0011, n1011, n0111, n1111), fade_xyzw.w);
+  float4 n_zw = lerp(n_0w, n_1w, fade_xyzw.z);
+  float2 n_yzw = lerp(n_zw.xy, n_zw.zw, fade_xyzw.y);
+  float n_xyzw = lerp(n_yzw.x, n_yzw.y, fade_xyzw.x);
+  return 2.2f * n_xyzw;
+}
+
+//! Classic Perlin noise, periodic version
+float pnoise(float4 P, float4 rep)
+{
+  float4 Pi0; // Integer part math.modulo rep
+  float4 Pf0 = modf(P, Pi0); // Fractional part for interpolation
+  Pi0 = fmod(Pi0, rep);
+  float4 Pi1 = fmod(Pi0 + 1.0f, rep); // Integer part + 1 math.mod rep
+  Pi0 = mod289(Pi0);
+  Pi1 = mod289(Pi1);
+  float4 Pf1 = Pf0 - 1.0f; // Fractional part - 1.0
+  float4 ix = float4(Pi0.x, Pi1.x, Pi0.x, Pi1.x);
+  float4 iy = float4(Pi0.yy, Pi1.yy);
+  float4 iz0 = float4(Pi0.zzzz);
+  float4 iz1 = float4(Pi1.zzzz);
+  float4 iw0 = float4(Pi0.wwww);
+  float4 iw1 = float4(Pi1.wwww);
+
+  float4 ixy = permute(permute(ix) + iy);
+  float4 ixy0 = permute(ixy + iz0);
+  float4 ixy1 = permute(ixy + iz1);
+  float4 ixy00 = permute(ixy0 + iw0);
+  float4 ixy01 = permute(ixy0 + iw1);
+  float4 ixy10 = permute(ixy1 + iw0);
+  float4 ixy11 = permute(ixy1 + iw1);
+
+  float4 gx00 = ixy00 * (1.0f / 7.0f);
+  float4 gy00 = floor(gx00) * (1.0f / 7.0f);
+  float4 gz00 = floor(gy00) * (1.0f / 6.0f);
+  gx00 = frac(gx00) - 0.5f;
+  gy00 = frac(gy00) - 0.5f;
+  gz00 = frac(gz00) - 0.5f;
+  float4 gw00 = float4(0.75f, 0.75f, 0.75f, 0.75f) - abs(gx00) - abs(gy00) - abs(gz00);
+  float4 sw00 = step(gw00, float4(0.0f, 0.0f, 0.0f, 0.0f));
+  gx00 -= sw00 * (step(0.0f, gx00) - 0.5f);
+  gy00 -= sw00 * (step(0.0f, gy00) - 0.5f);
+
+  float4 gx01 = ixy01 * (1.0f / 7.0f);
+  float4 gy01 = floor(gx01) * (1.0f / 7.0f);
+  float4 gz01 = floor(gy01) * (1.0f / 6.0f);
+  gx01 = frac(gx01) - 0.5f;
+  gy01 = frac(gy01) - 0.5f;
+  gz01 = frac(gz01) - 0.5f;
+  float4 gw01 = float4(0.75f, 0.75f, 0.75f, 0.75f) - abs(gx01) - abs(gy01) - abs(gz01);
+  float4 sw01 = step(gw01, float4(0.0f, 0.0f, 0.0f, 0.0f));
+  gx01 -= sw01 * (step(0.0f, gx01) - 0.5f);
+  gy01 -= sw01 * (step(0.0f, gy01) - 0.5f);
+
+  float4 gx10 = ixy10 * (1.0f / 7.0f);
+  float4 gy10 = floor(gx10) * (1.0f / 7.0f);
+  float4 gz10 = floor(gy10) * (1.0f / 6.0f);
+  gx10 = frac(gx10) - 0.5f;
+  gy10 = frac(gy10) - 0.5f;
+  gz10 = frac(gz10) - 0.5f;
+  float4 gw10 = float4(0.75f, 0.75f, 0.75f, 0.75f) - abs(gx10) - abs(gy10) - abs(gz10);
+  float4 sw10 = step(gw10, float4(0.0f, 0.0f, 0.0f, 0.0f));
+  gx10 -= sw10 * (step(0.0f, gx10) - 0.5f);
+  gy10 -= sw10 * (step(0.0f, gy10) - 0.5f);
+
+  float4 gx11 = ixy11 * (1.0f / 7.0f);
+  float4 gy11 = floor(gx11) * (1.0f / 7.0f);
+  float4 gz11 = floor(gy11) * (1.0f / 6.0f);
+  gx11 = frac(gx11) - 0.5f;
+  gy11 = frac(gy11) - 0.5f;
+  gz11 = frac(gz11) - 0.5f;
+  float4 gw11 = float4(0.75f, 0.75f, 0.75f, 0.75f) - abs(gx11) - abs(gy11) - abs(gz11);
+  float4 sw11 = step(gw11, float4(0.0f, 0.0f, 0.0f, 0.0f));
+  gx11 -= sw11 * (step(0.0f, gx11) - 0.5f);
+  gy11 -= sw11 * (step(0.0f, gy11) - 0.5f);
+
+  float4 g0000 = float4(gx00.x, gy00.x, gz00.x, gw00.x);
+  float4 g1000 = float4(gx00.y, gy00.y, gz00.y, gw00.y);
+  float4 g0100 = float4(gx00.z, gy00.z, gz00.z, gw00.z);
+  float4 g1100 = float4(gx00.w, gy00.w, gz00.w, gw00.w);
+  float4 g0010 = float4(gx10.x, gy10.x, gz10.x, gw10.x);
+  float4 g1010 = float4(gx10.y, gy10.y, gz10.y, gw10.y);
+  float4 g0110 = float4(gx10.z, gy10.z, gz10.z, gw10.z);
+  float4 g1110 = float4(gx10.w, gy10.w, gz10.w, gw10.w);
+  float4 g0001 = float4(gx01.x, gy01.x, gz01.x, gw01.x);
+  float4 g1001 = float4(gx01.y, gy01.y, gz01.y, gw01.y);
+  float4 g0101 = float4(gx01.z, gy01.z, gz01.z, gw01.z);
+  float4 g1101 = float4(gx01.w, gy01.w, gz01.w, gw01.w);
+  float4 g0011 = float4(gx11.x, gy11.x, gz11.x, gw11.x);
+  float4 g1011 = float4(gx11.y, gy11.y, gz11.y, gw11.y);
+  float4 g0111 = float4(gx11.z, gy11.z, gz11.z, gw11.z);
+  float4 g1111 = float4(gx11.w, gy11.w, gz11.w, gw11.w);
+
+  float4 norm00 = taylorInvSqrt(float4(dot(g0000, g0000), dot(g0100, g0100), dot(g1000, g1000), dot(g1100, g1100)));
+  g0000 *= norm00.x;
+  g0100 *= norm00.y;
+  g1000 *= norm00.z;
+  g1100 *= norm00.w;
+
+  float4 norm01 = taylorInvSqrt(float4(dot(g0001, g0001), dot(g0101, g0101), dot(g1001, g1001), dot(g1101, g1101)));
+  g0001 *= norm01.x;
+  g0101 *= norm01.y;
+  g1001 *= norm01.z;
+  g1101 *= norm01.w;
+
+  float4 norm10 = taylorInvSqrt(float4(dot(g0010, g0010), dot(g0110, g0110), dot(g1010, g1010), dot(g1110, g1110)));
+  g0010 *= norm10.x;
+  g0110 *= norm10.y;
+  g1010 *= norm10.z;
+  g1110 *= norm10.w;
+
+  float4 norm11 = taylorInvSqrt(float4(dot(g0011, g0011), dot(g0111, g0111), dot(g1011, g1011), dot(g1111, g1111)));
+  g0011 *= norm11.x;
+  g0111 *= norm11.y;
+  g1011 *= norm11.z;
+  g1111 *= norm11.w;
+
+  float n0000 = dot(g0000, Pf0);
+  float n1000 = dot(g1000, float4(Pf1.x, Pf0.yzw));
+  float n0100 = dot(g0100, float4(Pf0.x, Pf1.y, Pf0.zw));
+  float n1100 = dot(g1100, float4(Pf1.xy, Pf0.zw));
+  float n0010 = dot(g0010, float4(Pf0.xy, Pf1.z, Pf0.w));
+  float n1010 = dot(g1010, float4(Pf1.x, Pf0.y, Pf1.z, Pf0.w));
+  float n0110 = dot(g0110, float4(Pf0.x, Pf1.yz, Pf0.w));
+  float n1110 = dot(g1110, float4(Pf1.xyz, Pf0.w));
+  float n0001 = dot(g0001, float4(Pf0.xyz, Pf1.w));
+  float n1001 = dot(g1001, float4(Pf1.x, Pf0.yz, Pf1.w));
+  float n0101 = dot(g0101, float4(Pf0.x, Pf1.y, Pf0.z, Pf1.w));
+  float n1101 = dot(g1101, float4(Pf1.xy, Pf0.z, Pf1.w));
+  float n0011 = dot(g0011, float4(Pf0.xy, Pf1.zw));
+  float n1011 = dot(g1011, float4(Pf1.x, Pf0.y, Pf1.zw));
+  float n0111 = dot(g0111, float4(Pf0.x, Pf1.yzw));
+  float n1111 = dot(g1111, Pf1);
+
+  float4 fade_xyzw = fade(Pf0);
+  float4 n_0w = lerp(float4(n0000, n1000, n0100, n1100), float4(n0001, n1001, n0101, n1101), fade_xyzw.w);
+  float4 n_1w = lerp(float4(n0010, n1010, n0110, n1110), float4(n0011, n1011, n0111, n1111), fade_xyzw.w);
+  float4 n_zw = lerp(n_0w, n_1w, fade_xyzw.z);
+  float2 n_yzw = lerp(n_zw.xy, n_zw.zw, fade_xyzw.y);
+  float n_xyzw = lerp(n_yzw.x, n_yzw.y, fade_xyzw.x);
+  return 2.2f * n_xyzw;
+}
+
+/**
+ * Description : Array and textureless GLSL 2D simplex noise function.
+ *      Author : Ian McEwan, Ashima Arts.
+ *  Maintainer : stegu
+ *     Lastmath.mod : 20110822 (ijm)
+ *     License : Copyright (C) 2011 Ashima Arts. All rights reserved.
+ *               Distributed under the MIT License. See LICENSE file.
+ *               https://github.com/ashima/webgl-noise
+ *               https://github.com/stegu/webgl-noise
+ */
+float snoise(float2 v)
+{
+  float4 C = float4(0.211324865405187f,  // (3.0-math.sqrt(3.0))/6.0
+                    0.366025403784439f,  // 0.5*(math.sqrt(3.0)-1.0)
+                    -0.577350269189626f,  // -1.0 + 2.0 * C.x
+                    0.024390243902439f); // 1.0 / 41.0
+  // First corner
+  float2 i = floor(v + dot(v, C.yy));
+  float2 x0 = v - i + dot(i, C.xx);
+
+  // Other corners
+  float2 i1;
+  //i1.x = math.step( x0.y, x0.x ); // x0.x > x0.y ? 1.0 : 0.0
+  //i1.y = 1.0 - i1.x;
+  i1 = (x0.x > x0.y) ? float2(1.0f, 0.0f) : float2(0.0f, 1.0f);
+  // x0 = x0 - 0.0 + 0.0 * C.xx ;
+  // x1 = x0 - i1 + 1.0 * C.xx ;
+  // x2 = x0 - 1.0 + 2.0 * C.xx ;
+  float4 x12 = x0.xyxy + C.xxzz;
+  x12.xy -= i1;
+
+  // Permutations
+  i = mod289(i); // Avoid truncation effects in permutation
+  float3 p = permute(permute(i.y + float3(0.0f, i1.y, 1.0f)) + i.x + float3(0.0f, i1.x, 1.0f));
+
+  float3 m = max(0.5f - float3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), 0.0f);
+  m = m * m;
+  m = m * m;
+
+  // Gradients: 41 points uniformly over a line, mapped onto a diamond.
+  // The ring size 17*17 = 289 is close to a multiple of 41 (41*7 = 287)
+
+  float3 x = mad(2.0f, frac(p * C.www), -1.0f);
+  float3 h = abs(x) - 0.5f;
+  float3 ox = floor(x + 0.5f);
+  float3 a0 = x - ox;
+
+  // Normalise gradients implicitly by scaling m
+  // Approximation of: m *= inversemath.sqrt( a0*a0 + h*h );
+  m *= mad(-0.85373472095314f, a0 * a0 + h * h, 1.79284291400159f);
+
+  // Compute final noise value at P
+
+  float  gx = a0.x * x0.x + h.x * x0.y;
+  float2 gyz = a0.yz * x12.xz + h.yz * x12.yw;
+  float3 g = float3(gx, gyz);
+
+  return 130.0f * dot(m, g);
+}
+
+/**
+ * Description : Array and textureless GLSL 2D/3D/4D simplex
+ *               noise functions.
+ *      Author : Ian McEwan, Ashima Arts.
+ *  Maintainer : stegu
+ *     Lastmath.mod : 20110822 (ijm)
+ *     License : Copyright (C) 2011 Ashima Arts. All rights reserved.
+ *               Distributed under the MIT License. See LICENSE file.
+ *               https://github.com/ashima/webgl-noise
+ *               https://github.com/stegu/webgl-noise
+*/
+float snoise(float3 v)
+{
+  float2 C = float2(1.0f / 6.0f, 1.0f / 3.0f);
+  float4 D = float4(0.0f, 0.5f, 1.0f, 2.0f);
+
+  // First corner
+  float3 i = floor(v + dot(v, C.yyy));
+  float3 x0 = v - i + dot(i, C.xxx);
+
+  // Other corners
+  float3 g = step(x0.yzx, x0.xyz);
+  float3 l = 1.0f - g;
+  float3 i1 = min(g.xyz, l.zxy);
+  float3 i2 = max(g.xyz, l.zxy);
+
+  //   x0 = x0 - 0.0 + 0.0 * C.xxx;
+  //   x1 = x0 - i1  + 1.0 * C.xxx;
+  //   x2 = x0 - i2  + 2.0 * C.xxx;
+  //   x3 = x0 - 1.0 + 3.0 * C.xxx;
+  float3 x1 = x0 - i1 + C.xxx;
+  float3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y
+  float3 x3 = x0 - D.yyy; // -1.0+3.0*C.x = -0.5 = -D.y
+
+  // Permutations
+  i = mod289(i);
+  float4 p = permute(permute(permute(
+    i.z + float4(0.0f, i1.z, i2.z, 1.0f)) +
+    i.y + float4(0.0f, i1.y, i2.y, 1.0f)) +
+    i.x + float4(0.0f, i1.x, i2.x, 1.0f));
+
+  // Gradients: 7x7 points over a square, mapped onto an octahedron.
+  // The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
+  float n_ = 0.142857142857f; // 1.0/7.0
+  float3 ns = mad(n_, D.wyz, -D.xzx);
+
+  float4 j = mad(-49.0f, floor(p * ns.z * ns.z), p); //  math.mod(p,7*7)
+
+  float4 x_ = floor(j * ns.z);
+  float4 y_ = floor(mad(-7.0f, x_, j)); // math.mod(j,N)
+
+  float4 x = mad(x_, ns.x, ns.yyyy);
+  float4 y = mad(y_, ns.x, ns.yyyy);
+  float4 h = 1.0f - abs(x) - abs(y);
+
+  float4 b0 = float4(x.xy, y.xy);
+  float4 b1 = float4(x.zw, y.zw);
+
+  //float4 s0 = float4(math.lessThan(b0,0.0))*2.0 - 1.0;
+  //float4 s1 = float4(math.lessThan(b1,0.0))*2.0 - 1.0;
+  float4 s0 = mad(2.0f, floor(b0), 1.0f);
+  float4 s1 = mad(2.0f, floor(b1), 1.0f);
+  float4 sh = -step(h, float4(0.0f, 0.0f, 0.0f, 0.0f));
+
+  float4 a0 = mad(sh.xxyy, s0.xzyw, b0.xzyw);
+  float4 a1 = mad(sh.zzww, s1.xzyw, b1.xzyw);
+
+  float3 p0 = float3(a0.xy, h.x);
+  float3 p1 = float3(a0.zw, h.y);
+  float3 p2 = float3(a1.xy, h.z);
+  float3 p3 = float3(a1.zw, h.w);
+
+  //Normalise gradients
+  float4 norm = taylorInvSqrt(float4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));
+  p0 *= norm.x;
+  p1 *= norm.y;
+  p2 *= norm.z;
+  p3 *= norm.w;
+
+  // Mix final noise value
+  float4 m = max(0.6f - float4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0f);
+  m = m * m;
+  return 42.0f * dot(m * m, float4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
+}
+
+/**
+ * Description : Array and textureless GLSL 2D/3D/4D simplex
+ *               noise functions.
+ *      Author : Ian McEwan, Ashima Arts.
+ *  Maintainer : stegu
+ *     Lastmath.mod : 20110822 (ijm)
+ *     License : Copyright (C) 2011 Ashima Arts. All rights reserved.
+ *               Distributed under the MIT License. See LICENSE file.
+ *               https://github.com/ashima/webgl-noise
+ *               https://github.com/stegu/webgl-noise
+ */
 float snoise(float3 v, out float3 gradient)
 {
   const float2 C = float2(1.0f / 6.0f, 1.0f / 3.0f);
@@ -719,22 +1158,22 @@ float snoise(float3 v, out float3 gradient)
   // Permutations
   i = mod289(i);
   float4 p = permute(permute(permute(
-    i.z + float4(0.0f, i1.z, i2.z, 1.0f))
-    + i.y + float4(0.0f, i1.y, i2.y, 1.0f))
-    + i.x + float4(0.0f, i1.x, i2.x, 1.0f));
+    i.z + float4(0.0f, i1.z, i2.z, 1.0f)) +
+    i.y + float4(0.0f, i1.y, i2.y, 1.0f)) +
+    i.x + float4(0.0f, i1.x, i2.x, 1.0f));
 
   // Gradients: 7x7 points over a square, mapped onto an octahedron.
   // The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
   float n_ = 0.142857142857f; // 1.0/7.0
-  float3 ns = n_ * D.wyz - D.xzx;
+  float3 ns = mad(n_, D.wyz, -D.xzx);
 
-  float4 j = p - 49.0f * floor(p * ns.z * ns.z); //  math.mod(p,7*7)
+  float4 j = mad(-49.0f, floor(p * ns.z * ns.z), p); //  math.mod(p,7*7)
 
   float4 x_ = floor(j * ns.z);
-  float4 y_ = floor(j - 7.0f * x_); // math.mod(j,N)
+  float4 y_ = floor(mad(-7.0f, x_, j)); // math.mod(j,N)
 
-  float4 x = x_ * ns.x + ns.yyyy;
-  float4 y = y_ * ns.x + ns.yyyy;
+  float4 x = mad(x_, ns.x, ns.yyyy);
+  float4 y = mad(y_, ns.x, ns.yyyy);
   float4 h = 1.0f - abs(x) - abs(y);
 
   float4 b0 = float4(x.xy, y.xy);
@@ -742,12 +1181,12 @@ float snoise(float3 v, out float3 gradient)
 
   //float4 s0 = float4(math.lessThan(b0,0.0))*2.0 - 1.0;
   //float4 s1 = float4(math.lessThan(b1,0.0))*2.0 - 1.0;
-  float4 s0 = floor(b0) * 2.0f + 1.0f;
-  float4 s1 = floor(b1) * 2.0f + 1.0f;
+  float4 s0 = mad(2.0f, floor(b0), 1.0f);
+  float4 s1 = mad(2.0f, floor(b1), 1.0f);
   float4 sh = -step(h, float4(0.0f, 0.0f, 0.0f, 0.0f));
 
-  float4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
-  float4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+  float4 a0 = mad(sh.xxyy, s0.xzyw, b0.xzyw);
+  float4 a1 = mad(sh.zzww, s1.xzyw, b1.xzyw);
 
   float3 p0 = float3(a0.xy, h.x);
   float3 p1 = float3(a0.zw, h.y);
@@ -776,25 +1215,27 @@ float snoise(float3 v, out float3 gradient)
   return 42.0f * dot(m4, pdotx);
 }
 
-// Description : Array and textureless GLSL 2D/3D/4D simplex
-//               noise functions.
-//      Author : Ian McEwan, Ashima Arts.
-//  Maintainer : stegu
-//     Lastmath.mod : 20110822 (ijm)
-//     License : Copyright (C) 2011 Ashima Arts. All rights reserved.
-//               Distributed under the MIT License. See LICENSE file.
-//               https://github.com/ashima/webgl-noise
-//               https://github.com/stegu/webgl-noise
+/**
+ * Description : Array and textureless GLSL 2D/3D/4D simplex
+ *               noise functions.
+ *      Author : Ian McEwan, Ashima Arts.
+ *  Maintainer : stegu
+ *     Lastmath.mod : 20110822 (ijm)
+ *     License : Copyright (C) 2011 Ashima Arts. All rights reserved.
+ *               Distributed under the MIT License. See LICENSE file.
+ *               https://github.com/ashima/webgl-noise
+ *               https://github.com/stegu/webgl-noise
+ */
 float snoise(float4 v)
 {
   // (math.sqrt(5) - 1)/4 = F4, used once below
   const float F4 = 0.309016994374947451f;
   const float4 C = float4(0.138196601125011f,  // (5 - math.sqrt(5))/20  G4
-      0.276393202250021f,  // 2 * G4
-      0.414589803375032f,  // 3 * G4
-      -0.447213595499958f); // -1 + 4 * G4
+                          0.276393202250021f,  // 2 * G4
+                          0.414589803375032f,  // 3 * G4
+                          -0.447213595499958f); // -1 + 4 * G4
 
-  // First corner
+                        // First corner
   float4 i = floor(v + dot(v, float4(F4, F4, F4, F4)));
   float4 x0 = v - i + dot(i, C.xxxx);
 
@@ -832,10 +1273,10 @@ float snoise(float4 v)
   i = mod289(i);
   float j0 = permute(permute(permute(permute(i.w) + i.z) + i.y) + i.x);
   float4 j1 = permute(permute(permute(permute(
-    i.w + float4(i1.w, i2.w, i3.w, 1.0f))
-    + i.z + float4(i1.z, i2.z, i3.z, 1.0f))
-    + i.y + float4(i1.y, i2.y, i3.y, 1.0f))
-    + i.x + float4(i1.x, i2.x, i3.x, 1.0f));
+    i.w + float4(i1.w, i2.w, i3.w, 1.0f)) +
+    i.z + float4(i1.z, i2.z, i3.z, 1.0f)) +
+    i.y + float4(i1.y, i2.y, i3.y, 1.0f)) +
+    i.x + float4(i1.x, i2.x, i3.x, 1.0f));
 
   // Gradients: 7x7x6 points over a cube, mapped onto a 4-cross polytope
   // 7*7*6 = 294, which is close to the ring size 17*17 = 289.
@@ -860,8 +1301,8 @@ float snoise(float4 v)
   float2 m1 = max(0.6f - float2(dot(x3, x3), dot(x4, x4)), 0.0f);
   m0 = m0 * m0;
   m1 = m1 * m1;
-  return 49.0f * (dot(m0 * m0, float3(dot(p0, x0), dot(p1, x1), dot(p2, x2)))
-                  + dot(m1 * m1, float2(dot(p3, x3), dot(p4, x4))));
+  return 49.0f * (dot(m0 * m0, float3(dot(p0, x0), dot(p1, x1), dot(p2, x2))) +
+                  dot(m1 * m1, float2(dot(p3, x3), dot(p4, x4))));
 }
 
 // float3  psrdnoise(float2 pos, float2 per, float rot)
@@ -938,7 +1379,7 @@ float3 psrdnoise(float2 pos, float2 per, float rot)
   // Hack: offset y slightly to hide some rare artifacts
   pos.y += 0.01f;
   // Skew to hexagonal grid
-  float2 uv = float2(pos.x + pos.y * 0.5f, pos.y);
+  float2 uv = float2(mad(0.5f, pos.y, pos.x), pos.y);
 
   float2 i0;
   float2 f0 = modf(uv, i0);
@@ -946,8 +1387,8 @@ float3 psrdnoise(float2 pos, float2 per, float rot)
   float2 i1 = (f0.x > f0.y) ? float2(1.0f, 0.0f) : float2(0.0f, 1.0f);
 
   // Unskewed grid points in (x,y) space
-  float2 p0 = float2(i0.x - i0.y * 0.5f, i0.y);
-  float2 p1 = float2(p0.x + i1.x - i1.y * 0.5f, p0.y + i1.y);
+  float2 p0 = float2(mad(-0.5f, i0.y, i0.x), i0.y);
+  float2 p1 = float2(mad(-0.5f, i1.y, p0.x + i1.x), p0.y + i1.y);
   float2 p2 = float2(p0.x + 0.5f, p0.y + 1.0f);
 
   // Vectors in unskewed (x,y) coordinates from
@@ -960,7 +1401,7 @@ float3 psrdnoise(float2 pos, float2 per, float rot)
   // wrap points in (x,y), map to (u,v)
   float3 xw = fmod(float3(p0.x, p1.x, p2.x), per.x);
   float3 yw = fmod(float3(p0.y, p1.y, p2.y), per.y);
-  float3 iuw = xw + 0.5f * yw;
+  float3 iuw = mad(0.5f, yw, xw);
   float3 ivw = yw;
 
   // Create gradients from indices
@@ -1018,23 +1459,27 @@ float3 psrdnoise(float2 pos, float2 per, float rot)
   return 11.0f * float3(n, dn0 + dn1 + dn2);
 }
 
-// 2-D tiling simplex noise with fixed gradients
-// and analytical derivative.
-// This function is implemented as a wrapper to "psrdnoise",
-// at the math.minimal math.cost of three extra additions.
+/**
+ * 2-D tiling simplex noise with fixed gradients
+ * and analytical derivative.
+ * This function is implemented as a wrapper to "psrdnoise",
+ * at the math.minimal math.cost of three extra additions.
+ */
 float3 psrdnoise(float2 pos, float2 per)
 {
   return psrdnoise(pos, per, 0.0f);
 }
 
-// 2-D tiling simplex noise with rotating gradients,
-// but without the analytical derivative.
+/**
+ * 2-D tiling simplex noise with rotating gradients,
+ * but without the analytical derivative.
+ */
 float psrnoise(float2 pos, float2 per, float rot)
 {
   // Offset y slightly to hide some rare artifacts
   pos.y += 0.001f;
   // Skew to hexagonal grid
-  float2 uv = float2(pos.x + pos.y * 0.5f, pos.y);
+  float2 uv = float2(mad(0.5f, pos.y, pos.x), pos.y);
 
   float2 i0;
   float2 f0 = modf(uv, i0);
@@ -1042,8 +1487,8 @@ float psrnoise(float2 pos, float2 per, float rot)
   float2 i1 = (f0.x > f0.y) ? float2(1.0f, 0.0f) : float2(0.0f, 1.0f);
 
   // Unskewed grid points in (x,y) space
-  float2 p0 = float2(i0.x - i0.y * 0.5f, i0.y);
-  float2 p1 = float2(p0.x + i1.x - i1.y * 0.5f, p0.y + i1.y);
+  float2 p0 = float2(mad(-0.5f, i0.y, i0.x), i0.y);
+  float2 p1 = float2(mad(-0.5f, i1.y, p0.x + i1.x), p0.y + i1.y);
   float2 p2 = float2(p0.x + 0.5f, p0.y + 1.0f);
 
   // Vectors in unskewed (x,y) coordinates from
@@ -1056,7 +1501,7 @@ float psrnoise(float2 pos, float2 per, float rot)
   // wrap points in (x,y), map to (u,v)
   float3 xw = fmod(float3(p0.x, p1.x, p2.x), per.x);
   float3 yw = fmod(float3(p0.y, p1.y, p2.y), per.y);
-  float3 iuw = xw + 0.5f * yw;
+  float3 iuw = mad(0.5f, yw, xw);
   float3 ivw = yw;
 
   // Create gradients from indices
@@ -1088,24 +1533,28 @@ float psrnoise(float2 pos, float2 per, float rot)
   return 11.0f * n;
 }
 
-// 2-D tiling simplex noise with fixed gradients,
-// without the analytical derivative.
-// This function is implemented as a wrapper to "psrnoise",
-// at the math.minimal math.cost of three extra additions.
+/**
+ * 2-D tiling simplex noise with fixed gradients,
+ * without the analytical derivative.
+ * This function is implemented as a wrapper to "psrnoise",
+ * at the math.minimal math.cost of three extra additions.
+ */
 float psrnoise(float2 pos, float2 per)
 {
   return psrnoise(pos, per, 0.0f);
 }
 
-// 2-D non-tiling simplex noise with rotating gradients and analytical derivative.
-// The first component of the 3-element return vector is the noise value,
-// and the second and third components are the x and y partial derivatives.
+/**
+ * 2-D non-tiling simplex noise with rotating gradients and analytical derivative.
+ * The first component of the 3-element return vector is the noise value,
+ * and the second and third components are the x and y partial derivatives.
+ */
 float3 srdnoise(float2 pos, float rot)
 {
   // Offset y slightly to hide some rare artifacts
   pos.y += 0.001f;
   // Skew to hexagonal grid
-  float2 uv = float2(pos.x + pos.y * 0.5f, pos.y);
+  float2 uv = float2(mad(0.5f, pos.y, pos.x), pos.y);
 
   float2 i0;
   float2 f0 = modf(uv, i0);
@@ -1113,8 +1562,8 @@ float3 srdnoise(float2 pos, float rot)
   float2 i1 = (f0.x > f0.y) ? float2(1.0f, 0.0f) : float2(0.0f, 1.0f);
 
   // Unskewed grid points in (x,y) space
-  float2 p0 = float2(i0.x - i0.y * 0.5f, i0.y);
-  float2 p1 = float2(p0.x + i1.x - i1.y * 0.5f, p0.y + i1.y);
+  float2 p0 = float2(mad(-0.5f, i0.y, i0.x), i0.y);
+  float2 p1 = float2(mad(-0.5f, i1.y, p0.x + i1.x), p0.y + i1.y);
   float2 p2 = float2(p0.x + 0.5f, p0.y + 1.0f);
 
   // Vectors in unskewed (x,y) coordinates from
@@ -1125,7 +1574,7 @@ float3 srdnoise(float2 pos, float rot)
 
   float3 x = float3(p0.x, p1.x, p2.x);
   float3 y = float3(p0.y, p1.y, p2.y);
-  float3 iuw = x + 0.5f * y;
+  float3 iuw = mad(0.5f, y, x);
   float3 ivw = y;
 
   // Avoid precision issues in permutation
@@ -1187,22 +1636,26 @@ float3 srdnoise(float2 pos, float rot)
   return 11.0f * float3(n, dn0 + dn1 + dn2);
 }
 
-// 2-D non-tiling simplex noise with fixed gradients and analytical derivative.
-// This function is implemented as a wrapper to "srdnoise",
-// at the math.minimal math.cost of three extra additions.
+/**
+ * 2-D non-tiling simplex noise with fixed gradients and analytical derivative.
+ * This function is implemented as a wrapper to "srdnoise",
+ * at the math.minimal math.cost of three extra additions.
+ */
 float3 srdnoise(float2 pos)
 {
   return srdnoise(pos, 0.0f);
 }
 
-// 2-D non-tiling simplex noise with rotating gradients,
-// without the analytical derivative.
+/**
+ * 2-D non-tiling simplex noise with rotating gradients,
+ * without the analytical derivative.
+ */
 float srnoise(float2 pos, float rot)
 {
   // Offset y slightly to hide some rare artifacts
   pos.y += 0.001f;
   // Skew to hexagonal grid
-  float2 uv = float2(pos.x + pos.y * 0.5f, pos.y);
+  float2 uv = float2(mad(0.5f, pos.y, pos.x), pos.y);
 
   float2 i0;
   float2 f0 = modf(uv, i0);
@@ -1210,8 +1663,8 @@ float srnoise(float2 pos, float rot)
   float2 i1 = (f0.x > f0.y) ? float2(1.0f, 0.0f) : float2(0.0f, 1.0f);
 
   // Unskewed grid points in (x,y) space
-  float2 p0 = float2(i0.x - i0.y * 0.5f, i0.y);
-  float2 p1 = float2(p0.x + i1.x - i1.y * 0.5f, p0.y + i1.y);
+  float2 p0 = float2(mad(-0.5f, i0.y, i0.x), i0.y);
+  float2 p1 = float2(mad(-0.5f, i1.y, p0.x + i1.x), p0.y + i1.y);
   float2 p2 = float2(p0.x + 0.5f, p0.y + 1.0f);
 
   // Vectors in unskewed (x,y) coordinates from
@@ -1222,7 +1675,7 @@ float srnoise(float2 pos, float rot)
 
   float3 x = float3(p0.x, p1.x, p2.x);
   float3 y = float3(p0.y, p1.y, p2.y);
-  float3 iuw = x + 0.5f * y;
+  float3 iuw = mad(0.5f, y, x);
   float3 ivw = y;
 
   // Avoid precision issues in permutation
@@ -1258,14 +1711,16 @@ float srnoise(float2 pos, float rot)
   return 11.0f * n;
 }
 
-// 2-D non-tiling simplex noise with fixed gradients,
-// without the analytical derivative.
-// This function is implemented as a wrapper to "srnoise",
-// at the math.minimal math.cost of three extra additions.
-// Note: if this kind of noise is all you want, there are faster
-// GLSL implementations of non-tiling simplex noise out there.
-// This one is included mainly for completeness and compatibility
-// with the other functions in the file.
+/**
+ * 2-D non-tiling simplex noise with fixed gradients,
+ * without the analytical derivative.
+ * This function is implemented as a wrapper to "srnoise",
+ * at the math.minimal math.cost of three extra additions.
+ * Note: if this kind of noise is all you want, there are faster
+ * GLSL implementations of non-tiling simplex noise out there.
+ * This one is included mainly for completeness and compatibility
+ * with the other functions in the file.
+ */
 float srnoise(float2 pos)
 {
   return srnoise(pos, 0.0f);
