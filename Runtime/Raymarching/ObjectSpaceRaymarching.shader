@@ -41,8 +41,8 @@ Shader "Xmaho/Raymarching/ObjectSpaceRaymarching"
     SubShader
     {
         Tags {
-            "Queue"="Geometry"
-            "RenderType"="Opeque"
+            "Queue"="Transparent"
+            "RenderType"="Transparent"
             "DisableBatching"="True"
         }
         LOD 100
@@ -52,6 +52,7 @@ Shader "Xmaho/Raymarching/ObjectSpaceRaymarching"
             Cull [_Cull]
             ZWrite [_ZWrite]
             ZTest [_ZTest]
+            Blend SrcAlpha OneMinusSrcAlpha
 
             CGPROGRAM
             #pragma target 5.0
@@ -73,16 +74,6 @@ Shader "Xmaho/Raymarching/ObjectSpaceRaymarching"
             #include "../Library/raymarching.cginc"
             #include "../Library/Template/object_space_raymarching_forward.cginc"
 
-            // The MIT License
-            // Copyright © 2013 Inigo Quilez
-            // Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-            // Making noise
-            float hash(float2 p)
-            {
-              p = 50.0 * frac(p * 0.3183099 + float2(0.71, 0.113));
-              return -1.0 + 2.0 * frac(p.x * p.y * (p.x + p.y));
-            }
-
             // Making ball status
             float4 metaballvalue(float i)
             {
@@ -90,7 +81,7 @@ Shader "Xmaho/Raymarching/ObjectSpaceRaymarching"
                 float3 ballpos = 0.3 * float3(cnoise(float2(i, i) + kt),
                                               cnoise(float2(i + 10, i * 20) + kt),
                                               cnoise(float2(i * 20, i + 20) + kt));
-                float scale = mad(hash(i.xx), 0.02, 0.05);
+                float scale = saturate(mad(cnoise(i.xx * 25 + kt), 0.05, 0.03));
                 return float4(ballpos, scale);
             }
 
@@ -119,9 +110,14 @@ Shader "Xmaho/Raymarching/ObjectSpaceRaymarching"
                 return metaball(to_local(position));
             }
 
+
             float4 raymarching_flag(raymarching_out i)
             {
-                return float4(1, 0, 0, 1);
+                float4 color;
+                float kt = _Time.x;
+                color.rgb = hsv2rgb(abs(float3(cnoise(i.position + kt), 0.9, 0.9)));
+                color.a = saturate(cnoise(to_local(i.position) + kt) + 0.5);
+                return color;
             }
             ENDCG
         }
