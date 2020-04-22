@@ -77,11 +77,11 @@ Shader "Xmaho/Raymarching/ObjectSpaceRaymarching"
             // Making ball status
             float4 metaballvalue(float i)
             {
-                float kt = 3 * _Time.y * mad(i, 0.01, 0.1);
-                float3 ballpos = 0.3 * float3(cnoise(float2(i, i) + kt),
+                float kt = _Time.y * mad(i, 0.01, 0.1);
+                float3 ballpos = 0.4 * float3(cnoise(float2(i, i) + kt),
                                               cnoise(float2(i + 10, i * 20) + kt),
                                               cnoise(float2(i * 20, i + 20) + kt));
-                float scale = saturate(mad(cnoise(i.xx * 25 + kt), 0.05, 0.03));
+                float scale = saturate(mad(snoise(i.xx * 25 + kt), 0.1, 0.05));
                 return float4(ballpos, scale);
             }
 
@@ -114,9 +114,9 @@ Shader "Xmaho/Raymarching/ObjectSpaceRaymarching"
             float4 raymarching_flag(raymarching_out i)
             {
                 float4 color;
-                float kt = _Time.x;
-                color.rgb = hsv2rgb(abs(float3(cnoise(i.position + kt), 0.9, 0.9)));
-                color.a = saturate(cnoise(to_local(i.position) + kt) + 0.5);
+                float kt = 1.3f * _Time.x;
+                color.rgb = hsv2rgb(float3(0.5f + cnoise(mad(0.4f, i.position, kt)), 0.9, 0.9));
+                color.a = saturate(mad(0.5f, snoise(to_local(i.position) + kt), 0.5f));
                 return color;
             }
             ENDCG
