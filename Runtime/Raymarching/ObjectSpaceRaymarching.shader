@@ -115,7 +115,7 @@ Shader "Xmaho/Raymarching/ObjectSpaceRaymarching"
             {
                 float4 color;
                 float kt = 1.3f * _Time.x;
-                color.rgb = hsv2rgb(float3(0.5f + cnoise(mad(0.4f, i.position, kt)), 0.9, 0.9));
+                color.rgb = hsv2rgb(float3(0.5f + snoise(mad(0.4f, i.position, kt)), 0.9, 0.9));
                 color.a = saturate(mad(0.5f, snoise(to_local(i.position) + kt), 0.5f));
                 return color;
             }
