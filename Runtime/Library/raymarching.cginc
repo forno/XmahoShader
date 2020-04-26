@@ -58,6 +58,11 @@ bool is_inner_box(float3 position)
   return all(max(mad(0.5, object_scale(), -abs(to_local(position) * object_scale())), 0.0));
 }
 
+bool is_inner_sphere(float3 position)
+{
+  return length(to_local(position) * object_scale()) < length(object_scale()) * 0.28867513459; // PI
+}
+
 float3 raymarch_normal(float3 position)
 {
   const float epsilon = 1e-4;
@@ -74,21 +79,29 @@ raymarching_out raymarch(raymarching_in i)
     float3 ray_direction = normalize(to);
     float max_length = camera_far_clip();
     float3 near_clip_position = mad(distance_from_near_clip(i.projection_position), ray_direction, camera_position());
+#if defined(_OBJECTCULLING_BOX)
     bool is_ray_inner = is_inner_box(near_clip_position);
+#elif defined(_OBJECTCULLING_SPHERE)
+    bool is_ray_inner = is_inner_sphere(near_clip_position);
+#endif
     float3 local_ray_direction = normalize(mul(unity_WorldToObject, ray_direction));
     i.distance_multiplier *= length(mul(unity_ObjectToWorld, local_ray_direction));
 
     raymarching_out o;
     float init_length;
+#if defined(_OBJECTCULLING_BOX) || defined(_OBJECTCULLING_SPHERE)
     if (is_ray_inner) {
         o.position = near_clip_position;
         o.normal = -ray_direction;
         init_length = camera_near_clip();
     } else {
+#endif
         o.position = i.world_position;
         o.normal = i.world_normal;
         init_length = length(to);
+#if defined(_OBJECTCULLING_BOX) || defined(_OBJECTCULLING_SPHERE)
     }
+#endif
     float total_length = init_length;
     float last_distance;
     for (int n = i.loop_count; n; --n) {
@@ -96,7 +109,11 @@ raymarching_out raymarch(raymarching_in i)
         total_length += last_distance;
         o.position += ray_direction * last_distance;
         if (last_distance < i.threshold || total_length > max_length) break;
+#if defined(_OBJECTCULLING_BOX)
         if (!is_inner_box(o.position)) break;
+#elif defined(_OBJECTCULLING_SPHERE)
+        if (!is_inner_sphere(o.position)) break;
+#endif
     }
 
     if (last_distance > i.threshold || total_length > max_length) discard;

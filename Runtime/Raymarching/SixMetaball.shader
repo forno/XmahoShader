@@ -21,7 +21,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-Shader "Xmaho/Raymarching/ObjectSpaceRaymarching"
+Shader "Xmaho/Raymarching/SixMetaball"
 {
     Properties
     {
@@ -31,10 +31,11 @@ Shader "Xmaho/Raymarching/ObjectSpaceRaymarching"
         _Loop ("Loop", Range(1, 100)) = 30
         _MinDistance ("Minimum Distance", Range(0.001, 0.1)) = 0.01
         _DistanceMultiplier ("Distance Multiplier", Range(0.001, 2.0)) = 1.0
+        [KeywordEnum(NONE, BOX, SPHERE)] _ObjectCulling ("Object Culling", Int) = 0
 
         [Header(Pass)]
         [Enum(UnityEngine.Rendering.CullMode)] _Cull("Culling", Int) = 0
-        [Toggle][KeyEnum(Off, On)] _ZWrite("ZWrite", Int) = 1
+        [Toggle][KeyEnum(Off, On)] _ZWrite("ZWrite", Int) = 0
         [Enum(UnityEngine.Rendering.CompareFunction)] _ZTest("ZTest", Int) = 4
     }
 
@@ -58,8 +59,9 @@ Shader "Xmaho/Raymarching/ObjectSpaceRaymarching"
             #pragma target 5.0
             #pragma vertex vert
             #pragma fragment frag
-            #pragma multi_compile_fog
+            //#pragma multi_compile_fog
             #pragma multi_compile_instancing
+            #pragma shader_feature_local _OBJECTCULLING_NONE _OBJECTCULLING_BOX _OBJECTCULLING_SPHERE
 
             sampler2D _MainTex;
             float4 _MainTex_ST;
@@ -109,7 +111,6 @@ Shader "Xmaho/Raymarching/ObjectSpaceRaymarching"
             {
                 return metaball(to_local(position));
             }
-
 
             float4 raymarching_flag(raymarching_out i)
             {
