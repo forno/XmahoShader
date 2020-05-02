@@ -18,14 +18,15 @@
     SubShader
     {
         Tags {
-            "RenderType"="Opeque"
+            "RenderType"="TransparentCutout"
             "Queue"="AlphaTest"
         }
         LOD 200
+        Cull Off
 
         CGPROGRAM
         // Physically based Standard lighting model, and enable shadows on all light types
-        #pragma surface surf Standard fullforwardshadows
+        #pragma surface surf Standard fullforwardshadows addshadow
 
         #pragma target 5.0
 
@@ -64,7 +65,7 @@
             float3 local_pos = to_local(IN.worldPos);
             float fluctuation_y = mad(_FluctuationFactor, mad(0.5, snoise(mad(_TimeFactor, _Time.y, local_pos)), 0.5), local_pos.y);
             float normalized_y = saturate((fluctuation_y - _LowestHight) * rcp((_HighestHight + _FluctuationFactor + _Epsilon) - _LowestHight)); // saturate are no cost
-            float3 dissolve_level = mad(1 - _EmissionWidth, normalized_y, _EmissionWidth - _DissolveThreshold);
+            half dissolve_level = mad(1 - _EmissionWidth, normalized_y, _EmissionWidth - _DissolveThreshold);
             clip(dissolve_level);
 
             // Albedo comes from a texture tinted by color

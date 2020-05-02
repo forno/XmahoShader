@@ -39,7 +39,7 @@ Shader "Xmaho/Dissolve/NoiseDissolve"
     SubShader
     {
         Tags {
-            "RenderType"="Opaque"
+            "RenderType"="TransparentCutout"
             "Queue"="AlphaTest"
         }
         LOD 200
@@ -47,7 +47,7 @@ Shader "Xmaho/Dissolve/NoiseDissolve"
 
         CGPROGRAM
         // Physically based Standard lighting model, and enable shadows on all light types
-        #pragma surface surf Standard fullforwardshadows
+        #pragma surface surf Standard fullforwardshadows addshadow
 
         #pragma target 5.0
 
