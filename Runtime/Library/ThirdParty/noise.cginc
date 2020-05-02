@@ -1011,7 +1011,7 @@ float snoise(float2 v)
   i = mod289(i); // Avoid truncation effects in permutation
   float3 p = permute(permute(i.y + float3(0.0f, i1.y, 1.0f)) + i.x + float3(0.0f, i1.x, 1.0f));
 
-  precise float3 m = saturate(0.5f - float3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw))); // value < 1 than max(value, 0.0f)
+  float3 m = saturate(0.5f - float3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw))); // value < 1 than max(value, 0.0f)
   m = m * m;
   m = m * m;
 
@@ -1116,7 +1116,7 @@ float snoise(float3 v)
   p3 *= norm.w;
 
   // Mix final noise value
-  precise float4 m = saturate(0.6f - float4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3))); // value < 1 than max(value, 0.0f)
+  float4 m = saturate(0.6f - float4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3))); // value < 1 than max(value, 0.0f)
   m = m * m;
   return 42.0f * dot(m * m, float4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
 }
@@ -1201,7 +1201,7 @@ float snoise(float3 v, out float3 gradient)
   p3 *= norm.w;
 
   // Mix final noise value
-  precise float4 m = saturate(0.6f - float4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3))); // value < 1 than max(value, 0.0f)
+  float4 m = saturate(0.6f - float4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3))); // value < 1 than max(value, 0.0f)
   float4 m2 = m * m;
   float4 m4 = m2 * m2;
   float4 pdotx = float4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3));
@@ -1297,8 +1297,8 @@ float snoise(float4 v)
   p4 *= taylorInvSqrt(dot(p4, p4));
 
   // Mix contributions from the five corners
-  precise float3 m0 = saturate(0.6f - float3(dot(x0, x0), dot(x1, x1), dot(x2, x2))); // value < 1 than max(value, 0.0f)
-  precise float2 m1 = saturate(0.6f - float2(dot(x3, x3), dot(x4, x4))); // value < 1 than max(value, 0.0f)
+  float3 m0 = saturate(0.6f - float3(dot(x0, x0), dot(x1, x1), dot(x2, x2))); // value < 1 than max(value, 0.0f)
+  float2 m1 = saturate(0.6f - float2(dot(x3, x3), dot(x4, x4))); // value < 1 than max(value, 0.0f)
   m0 = m0 * m0;
   m1 = m1 * m1;
   return 49.0f * (dot(m0 * m0, float3(dot(p0, x0), dot(p1, x1), dot(p2, x2))) +
