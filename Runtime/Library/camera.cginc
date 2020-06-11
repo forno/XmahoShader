@@ -31,7 +31,7 @@ float3 camera_position()
 
 float3 camera_forward()
 {
-  return -UNITY_MATRIX_V[2].xyz;
+  return -UNITY_MATRIX_V._m20_m21_m22;
 }
 
 float3 camera_up()
