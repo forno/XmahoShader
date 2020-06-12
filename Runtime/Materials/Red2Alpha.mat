@@ -25,4 +25,5 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Floats:
     - _Channel: 0
+    - _NearLength: 0.01
     m_Colors: []
