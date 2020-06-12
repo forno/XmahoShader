@@ -30,7 +30,7 @@
 #elif defined(_CHANNEL_BLUE)
                 return col.b;
 #else
-                return dot(col.rgb, float3(0.299, 0.587, 0.114));
+                return Luminance(col);
 #endif
             }
 
