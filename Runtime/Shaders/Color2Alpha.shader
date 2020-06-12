@@ -1,4 +1,4 @@
-﻿Shader "Unlit/Color2Alpha"
+﻿Shader "Xmaho/Color2Alpha"
 {
     Properties
     {
