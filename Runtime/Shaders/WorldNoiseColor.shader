@@ -57,8 +57,8 @@ Shader "Xmaho/WorldNoiseColor"
         half _WorldColorPower;
         half _TimeSpeed;
 
-        #include "Library/utility.cginc"
-        #include "Library/noise.cginc"
+        #include "Packages/link.xmaho.shader/Runtime/Library/utility.cginc"
+        #include "Packages/link.xmaho.shader/Runtime/Library/noise.cginc"
 
         // Add instancing support for this shader. You need to check 'Enable Instancing' on materials that use the shader.
         // See https://docs.unity3d.com/Manual/GPUInstancing.html for more information about instancing.
