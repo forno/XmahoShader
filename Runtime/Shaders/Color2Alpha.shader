@@ -21,6 +21,14 @@
             ZTest Always
             CGPROGRAM
 
+            #pragma vertex vert
+            #pragma fragment frag
+            #pragma multi_compile_instancing
+            #pragma shader_feature_local _CHANNEL_RED _CHANNEL_GREEN _CHANNEL_BLUE 
+
+            #include "UnityCG.cginc"
+            #include "Packages/link.xmaho.shader/Runtime/Library/utility.cginc"
+
             fixed getChannelColor(fixed4 col)
             {
 #if defined(_CHANNEL_RED)
@@ -33,14 +41,6 @@
                 return Luminance(col);
 #endif
             }
-
-            #pragma vertex vert
-            #pragma fragment frag
-            #pragma multi_compile_instancing
-            #pragma shader_feature_local _CHANNEL_RED _CHANNEL_GREEN _CHANNEL_BLUE 
-
-            #include "UnityCG.cginc"
-            #include "Packages/link.xmaho.shader/Runtime/Library/utility.cginc"
 
             struct v2f
             {
