@@ -57,8 +57,7 @@
                 v2f o;
 
                 UNITY_SETUP_INSTANCE_ID(v);
-                //o.vertex = lerp(mul(UNITY_MATRIX_P, v.vertex), 0, _NearLength < length(to_local(_WorldSpaceCameraPos)));
-                o.vertex = mul(UNITY_MATRIX_P, v.vertex);
+                o.vertex = lerp(mul(UNITY_MATRIX_P, v.vertex), 0, _NearLength < length(to_local(_WorldSpaceCameraPos)));
                 o.uv = TRANSFORM_TEX(v.texcoord, _MainTex);
                 return o;
             }
