@@ -11,5 +11,12 @@
     "name": "FORNO",
     "email": "forno@xmaho.link",
     "url": "https://github.com/forno"
-  }
+  },
+  "samples": [
+    {
+      "displayName": "Color2Alpha",
+      "description": "The Color2Alpha Sample",
+      "path": "Samples~/Color2Alpha"
+    }
+  ]
 }
