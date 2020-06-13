@@ -40,7 +40,6 @@ Shader "Xmaho/Line/UVOutline" {
             #pragma fragment frag
             #pragma multi_compile_instancing
             #pragma shader_feature_local __ _SCALE_ON
-            #pragma target 5.0
 
             #include "UnityCG.cginc"
             #include "Packages/link.xmaho.shader/Runtime/Library/utility.cginc"
