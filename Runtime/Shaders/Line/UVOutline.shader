@@ -23,6 +23,8 @@ SOFTWARE.
 */
 Shader "Xmaho/Line/UVOutline" {
     Properties {
+        [Enum(UnityEngine.Rendering.CullMode)] _Cull ("Cull", Float) = 2
+        [Header(Main Settings)]
         [HDR] _Color ("Color", Color) = (0, 0, 2, 1)
         _Width ("Witdh", Float) = 0.03
         [Toggle] _Scale ("Scale width?", Float) = 0
@@ -35,6 +37,8 @@ Shader "Xmaho/Line/UVOutline" {
         LOD 100
 
         Pass {
+            Cull [_Cull]
+
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
