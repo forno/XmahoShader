@@ -25,6 +25,7 @@ Shader "Xmaho/Line/UVOutline" {
     Properties {
         [HDR] _Color ("Color", Color) = (0, 0, 2, 1)
         _Width ("Witdh", Float) = 0.03
+        [Toggle] _Scale ("Scale width?", Float) = 0
     }
     SubShader {
         Tags {
@@ -38,10 +39,19 @@ Shader "Xmaho/Line/UVOutline" {
             #pragma vertex vert
             #pragma fragment frag
             #pragma multi_compile_instancing
+            #pragma shader_feature_local __ _SCALE_ON
             #pragma target 5.0
-            
+
             #include "UnityCG.cginc"
             #include "Packages/link.xmaho.shader/Runtime/Library/utility.cginc"
+
+            float3 object_scale_factor() {
+#if defined(_SCALE_ON)
+                return 1;
+#else
+                return object_scale();
+#endif
+            }
 
             struct v2f {
                 float4 vertex : POSITION;
@@ -73,8 +83,8 @@ Shader "Xmaho/Line/UVOutline" {
             float4 frag(v2f i) : SV_Target{
                 UNITY_SETUP_INSTANCE_ID(i);
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
-                float2 uv_scaled_origin_center = object_scale() * mad(2, i.uv, -1);
-                float2 outline_distance_field = abs(abs(uv_scaled_origin_center) - object_scale());
+                float2 uv_scaled_origin_center = object_scale_factor() * mad(2, i.uv, -1);
+                float2 outline_distance_field = abs(abs(uv_scaled_origin_center) - object_scale_factor());
                 float norm1_from_outline = min(outline_distance_field.x, outline_distance_field.y);
                 clip(UNITY_ACCESS_INSTANCED_PROP(Props, _Width) - norm1_from_outline);
                 float3 col = UNITY_ACCESS_INSTANCED_PROP(Props, _Color);
